@@ -1,0 +1,84 @@
+/* Message appearance animation */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-animate {
+  animation: slideUpFade 0.4s ease-out forwards;
+}
+
+/* Bouncing dots for the "typing" indicator */
+.typing-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #c4c7c5;
+  border-radius: 50%;
+  margin: 0 3px;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Smooth button hover effects */
+.sidebar-btn {
+  transition: background-color 0.2s ease;
+}
+.sidebar-btn:hover {
+  background-color: #2a2a2a !important;
+}
+
+.send-btn {
+  transition: transform 0.1s ease;
+}
+.send-btn:hover {
+  transform: scale(1.08);
+}
+.send-btn:active {
+  transform: scale(0.95);
+}
+
+/* Popup menu smooth appearance animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.floating-chat-menu {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+.menu-animate {
+  animation: menuPopup 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Subtle shadow on the sidebar for depth */
+.app-sidebar {
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Responsive container adjustment for mobile devices */
+@media screen and (max-width: 768px) {
+  .app-sidebar {
+    display: none !important; /* Hide sidebar on mobile or change to a toggle menu */
+  }
+}

@@ -746,7 +746,7 @@ function App() {
                 lineHeight: '1.4',
                 maxHeight: '150px' 
               }} 
-              placeholder={isTyping ? "PEDRO is thinking..." : "What are we going to study?"} 
+              placeholder={isTyping ? "PEDRO is thinking..." : "Ask me anything!"} 
             />
 
             <button 

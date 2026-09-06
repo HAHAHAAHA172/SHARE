@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import multer from 'multer';
 import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
@@ -10,20 +11,36 @@ app.use(cors());
 app.use(express.json());
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI });
+const upload = multer({ dest: 'uploads/' });
 
-// ⚡ Streaming Chat Endpoint using Gemini 3.5 Flash-Lite
-app.post('/api/chat', async (req, res) => {
+// --- MAIN CHAT ROUTE (Handles Text and File Uploads) ---
+app.post('/api/chat', upload.single('file'), async (req, res) => {
   try {
-    const { message, history } = req.body;
+    let uploadedFile = null;
 
-    const cleanedMessage = message ? message.replace(/\s+/g, ' ').trim() : '';
+    // 1. If a file was attached to the chat message, upload it to Gemini
+    if (req.file) {
+      uploadedFile = await ai.files.upload({
+        file: req.file.path,
+        config: { mimeType: req.file.mimetype }
+      });
+    }
 
-    const cleanedHistory = history ? history.slice(-6).map(item => ({
+    // 2. Safely parse body (FormData sends history as JSON string, fetch sends it as object)
+    const message = req.body.message || '';
+    let history = [];
+    if (req.body.history) {
+      history = typeof req.body.history === 'string' 
+        ? JSON.parse(req.body.history) 
+        : req.body.history;
+    }
+
+    const cleanedMessage = message.replace(/\s+/g, ' ').trim();
+    const cleanedHistory = history.slice(-6).map(item => ({
       role: item.role === 'bot' ? 'model' : 'user',
       parts: [{ text: item.text ? item.text.replace(/\s+/g, ' ').trim() : '' }]
-    })) : [];
+    }));
 
-    // Set headers for Server-Sent Events (SSE) streaming
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -36,7 +53,15 @@ app.post('/api/chat', async (req, res) => {
       }
     });
 
-    const resultStream = await chat.sendMessageStream({ message: cleanedMessage });
+    // 3. Send message with or without the file to Gemini
+    let chatPayload;
+    if (uploadedFile) {
+      chatPayload = [uploadedFile, cleanedMessage || "Please analyze this attached document."];
+    } else {
+      chatPayload = cleanedMessage;
+    }
+
+    const resultStream = await chat.sendMessageStream({ message: chatPayload });
     
     for await (const chunk of resultStream) {
       const chunkText = chunk.text;
@@ -55,6 +80,7 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// --- QUIZ ROUTE: GENERATE FROM TOPIC ---
 app.post('/api/quiz/generate', async (req, res) => {
   try {
     const { topic, items, parts, partTypes } = req.body;
@@ -89,9 +115,7 @@ app.post('/api/quiz/generate', async (req, res) => {
     const response = await ai.models.generateContent({
       model: 'gemini-3.5-flash-lite',
       contents: prompt,
-      config: {
-        responseMimeType: "application/json"
-      }
+      config: { responseMimeType: "application/json" }
     });
 
     res.json(JSON.parse(response.text));
@@ -101,7 +125,60 @@ app.post('/api/quiz/generate', async (req, res) => {
   }
 });
 
+// --- QUIZ ROUTE: GENERATE FROM FILE ---
+app.post('/api/quiz/generate-from-file', upload.single('document'), async (req, res) => {
+  try {
+    const items = parseInt(req.body.items);
+    const parts = parseInt(req.body.parts);
+    const partTypes = JSON.parse(req.body.partTypes);
+    const instructions = req.body.instructions || 'General coverage';
+
+    const uploadedFile = await ai.files.upload({
+      file: req.file.path,
+      mimeType: req.file.mimetype
+    });
+
+    let partsDescription = "";
+    for (let i = 0; i < parts; i++) {
+      partsDescription += `Part ${i + 1} must be strictly type: ${partTypes[i] || 'multiple choice'}.\n`;
+    }
+
+    const prompt = `Based on the attached document, generate an academic quiz.
+    Specific instructions: ${instructions}
+    The quiz must have ${parts} parts and a total of ${items} items distributed across them.\n${partsDescription}
+    CRITICAL RULE: For 'multiple choice' and 'true or false' questions, you MUST include a valid 'options' array of strings. For 'enumeration' questions, you must OMIT the 'options' key entirely.
+    
+    Format strictly as a valid JSON object matching this exact schema:
+    {
+      "title": "Quiz Title",
+      "parts": [
+        {
+          "partTitle": "Part 1: Multiple Choice",
+          "questions": [
+            {
+              "question": "Question text here?",
+              "options": ["Choice A", "Choice B", "Choice C", "Choice D"],
+              "answer": "Correct Answer"
+            }
+          ]
+        } 
+      ]
+    }`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash-lite',
+      contents: [uploadedFile, prompt],
+      config: { responseMimeType: "application/json" }
+    });
+
+    res.json(JSON.parse(response.text));
+  } catch (error) {
+    console.error('File Quiz generation error:', error);
+    res.status(500).json({ error: 'Failed to generate quiz from file' });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
-}); 
+});

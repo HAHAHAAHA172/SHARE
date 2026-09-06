@@ -49,9 +49,12 @@ function App() {
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
   const messages = activeChat.messages;
 
-  // --- Response timing ---
   const [liveElapsed, setLiveElapsed] = useState(0);
   const responseStartRef = useRef(null);
+
+  const [quizFile, setQuizFile] = useState(null);
+  const [fileInstructions, setFileInstructions] = useState('');
+  const [chatFile, setChatFile] = useState(null); // New state for general chat files
 
   useEffect(() => {
     if (!isTyping) return;
@@ -147,7 +150,6 @@ function App() {
     }));
   };
 
-  // --- Handle Auto-resizing Text Input ---
   const handleTyping = (e) => {
     setInput(e.target.value);
     e.target.style.height = 'auto';
@@ -156,13 +158,21 @@ function App() {
 
   // --- STREAMING CHAT CONSUMER ---
   const sendMessage = async () => {
-    if (!input.trim() || isTyping || sendingRef.current) return;
+    if ((!input.trim() && !chatFile) || isTyping || sendingRef.current) return;
     sendingRef.current = true;
+    
     const userMsgText = input;
-    const newMessages = [...messages, { role: 'user', text: userMsgText }];
+    const currentFile = chatFile;
+    
+    const displayMsg = currentFile 
+      ? `*📄 Attached File: ${currentFile.name}*\n\n${userMsgText}`
+      : userMsgText;
+      
+    const newMessages = [...messages, { role: 'user', text: displayMsg }];
     updateActiveChatMessages(newMessages);
     
     setInput('');
+    setChatFile(null); // Clear from UI immediately
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -187,11 +197,27 @@ function App() {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsgText, history: slidingWindowHistory }),
-      });
+      let response;
+      
+      if (currentFile) {
+        // Send file via FormData
+        const formData = new FormData();
+        formData.append('file', currentFile);
+        formData.append('message', userMsgText);
+        formData.append('history', JSON.stringify(slidingWindowHistory));
+        
+        response = await fetch(`${API_BASE_URL}/api/chat`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        // Send text via standard JSON
+        response = await fetch(`${API_BASE_URL}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userMsgText, history: slidingWindowHistory }),
+        });
+      }
 
       if (!response.ok) throw new Error('Network stream error');
 
@@ -245,18 +271,40 @@ function App() {
   const startQuizGeneration = async () => {
     setShowQuizModal(false);
     setIsTyping(true);
-    const quizUserMsg = { role: 'user', text: `Create a mock quiz about: ${quizTopic || 'General Knowledge'} (${quizItems} items, ${quizParts} parts)` };
+    
+    const quizUserMsg = { 
+      role: 'user', 
+      text: quizFile 
+        ? `Create a mock quiz based on the uploaded file "${quizFile.name}". Instructions: ${fileInstructions || 'General coverage'} (${quizItems} items, ${quizParts} parts)`
+        : `Create a mock quiz about: ${quizTopic || 'General Knowledge'} (${quizItems} items, ${quizParts} parts)` 
+    };
     const updatedMsgs = [...messages, quizUserMsg];
-    updateActiveChatMessages(updatedMsgs, `Quiz: ${quizTopic || 'General Knowledge'}`);
+    updateActiveChatMessages(updatedMsgs, `Quiz: ${quizFile ? quizFile.name : (quizTopic || 'General Knowledge')}`);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/quiz/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          topic: quizTopic, items: parseInt(quizItems), parts: parseInt(quizParts), partTypes: partTypes 
-        }),
-      });
+      let response;
+
+      if (quizFile) {
+        const formData = new FormData();
+        formData.append('document', quizFile);
+        formData.append('instructions', fileInstructions);
+        formData.append('items', quizItems);
+        formData.append('parts', quizParts);
+        formData.append('partTypes', JSON.stringify(partTypes));
+
+        response = await fetch(`${API_BASE_URL}/api/quiz/generate-from-file`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        response = await fetch(`${API_BASE_URL}/api/quiz/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            topic: quizTopic, items: parseInt(quizItems), parts: parseInt(quizParts), partTypes: partTypes 
+          }),
+        });
+      }
 
       const data = await response.json();
       
@@ -280,6 +328,8 @@ function App() {
       updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: "Sorry, I encountered an error parsing the quiz structure. Please try generating again." }]);
     } finally {
       setIsTyping(false);
+      setQuizFile(null);
+      setFileInstructions('');
     }
   };
 
@@ -569,18 +619,51 @@ function App() {
         <div style={{ padding: '10px 20px 20px 20px', display: 'flex', justifyContent: 'center', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
           <div style={{ position: 'relative', display: 'flex', width: '100%', maxWidth: '850px', backgroundColor: '#383838', borderRadius: '24px', padding: '8px 12px 8px 14px', alignItems: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', boxSizing: 'border-box' }}>
             
+            {/* File Attachment Chip */}
+            {chatFile && (
+              <div style={{ position: 'absolute', top: '-40px', left: '15px', background: '#444', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #555', zIndex: 20 }}>
+                📄 {chatFile.name}
+                <button onClick={() => setChatFile(null)} style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: '16px', padding: 0, display: 'flex', alignItems: 'center' }}>✖</button>
+              </div>
+            )}
+
             {showInputMenu && (
               <div className="input-floating-menu" style={{ 
                 position: 'absolute', bottom: 'calc(100% + 10px)', left: '10px', 
                 backgroundColor: '#2b2b2b', border: '1px solid #444', borderRadius: '12px', 
-                padding: '8px', width: '180px', zIndex: 100, boxShadow: '0 8px 16px rgba(0,0,0,0.6)' 
+                padding: '6px', width: '180px', zIndex: 100, boxShadow: '0 8px 16px rgba(0,0,0,0.6)' 
               }}>
                 <div 
                   onClick={() => { setShowQuizModal(true); setShowInputMenu(false); }} 
                   style={{ padding: '10px 12px', fontSize: '14px', cursor: 'pointer', borderRadius: '8px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px' }}
+                  onMouseOver={(e) => e.target.style.background = '#383838'}
+                  onMouseOut={(e) => e.target.style.background = 'transparent'}
                 >
                   📝 Create a Quiz
                 </div>
+                
+                {/* Visual Divider */}
+                <div style={{ height: '1px', background: '#444', margin: '4px 0' }} />
+                
+                {/* Upload File Button */}
+                <label 
+                  style={{ padding: '10px 12px', fontSize: '14px', cursor: 'pointer', borderRadius: '8px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}
+                  onMouseOver={(e) => e.target.style.background = '#383838'}
+                  onMouseOut={(e) => e.target.style.background = 'transparent'}
+                >
+                  📄 Upload File
+                  <input 
+                    type="file" 
+                    style={{ display: 'none' }} 
+                    accept=".pdf,.txt,.docx,image/*" 
+                    onChange={(e) => {
+                      if(e.target.files[0]) {
+                        setChatFile(e.target.files[0]);
+                        setShowInputMenu(false);
+                      }
+                    }} 
+                  />
+                </label>
               </div>
             )}
 
@@ -649,10 +732,41 @@ function App() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#2b2b2b', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: '15px', color: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2>Create a Mock Quiz</h2>
+            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '13px', color: '#b0b0b0' }}>Topic / Subject Material</label>
-              <input type="text" placeholder="e.g. Intro to Psychology" value={quizTopic} onChange={(e) => setQuizTopic(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff' }} />
+              <label style={{ fontSize: '13px', color: '#b0b0b0' }}>Source Material (Topic or File)</label>
+              
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input 
+                  type="file" 
+                  accept=".pdf,.txt,.docx,image/*" 
+                  onChange={(e) => setQuizFile(e.target.files[0])} 
+                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', fontSize: '12px' }}
+                />
+                {quizFile && (
+                  <button onClick={() => setQuizFile(null)} style={{ background: 'transparent', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: '18px' }}>✖</button>
+                )}
+              </div>
+
+              {quizFile ? (
+                <input 
+                  type="text" 
+                  placeholder="Which page, chapter, or specific topic from the file?" 
+                  value={fileInstructions} 
+                  onChange={(e) => setFileInstructions(e.target.value)} 
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', marginTop: '5px' }} 
+                />
+              ) : (
+                <input 
+                  type="text" 
+                  placeholder="e.g. Intro to Psychology" 
+                  value={quizTopic} 
+                  onChange={(e) => setQuizTopic(e.target.value)} 
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', marginTop: '5px' }} 
+                />
+              )}
             </div>
+
             <div style={{ display: 'flex', gap: '15px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
                 <label style={{ fontSize: '13px', color: '#b0b0b0' }}>Total Items (Max 15)</label>

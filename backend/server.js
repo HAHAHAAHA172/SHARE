@@ -1,3 +1,4 @@
+///PEDRO backend
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -13,12 +14,10 @@ app.use(express.json());
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI });
 const upload = multer({ dest: 'uploads/' });
 
-// --- MAIN CHAT ROUTE (Handles Text and File Uploads) ---
 app.post('/api/chat', upload.single('file'), async (req, res) => {
   try {
     let uploadedFile = null;
 
-    // 1. If a file was attached to the chat message, upload it to Gemini
     if (req.file) {
       uploadedFile = await ai.files.upload({
         file: req.file.path,
@@ -26,7 +25,6 @@ app.post('/api/chat', upload.single('file'), async (req, res) => {
       });
     }
 
-    // 2. Safely parse body (FormData sends history as JSON string, fetch sends it as object)
     const message = req.body.message || '';
     let history = [];
     if (req.body.history) {
@@ -53,7 +51,6 @@ app.post('/api/chat', upload.single('file'), async (req, res) => {
       }
     });
 
-    // 3. Send message with or without the file to Gemini structured correctly
     let resultStream;
     if (uploadedFile) {
       const filePart = createPartFromUri(uploadedFile.uri, uploadedFile.mimeType);
@@ -68,7 +65,7 @@ app.post('/api/chat', upload.single('file'), async (req, res) => {
         message: cleanedMessage
       });
     }
-    
+
     for await (const chunk of resultStream) {
       const chunkText = chunk.text;
       if (chunkText) {
@@ -86,7 +83,6 @@ app.post('/api/chat', upload.single('file'), async (req, res) => {
   }
 });
 
-// --- QUIZ ROUTE: GENERATE FROM TOPIC ---
 app.post('/api/quiz/generate', async (req, res) => {
   try {
     const { topic, items, parts, partTypes } = req.body;
@@ -131,7 +127,6 @@ app.post('/api/quiz/generate', async (req, res) => {
   }
 });
 
-// --- QUIZ ROUTE: GENERATE FROM FILE ---
 app.post('/api/quiz/generate-from-file', upload.single('document'), async (req, res) => {
   try {
     const items = parseInt(req.body.items);

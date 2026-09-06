@@ -7,56 +7,48 @@ import './App.css';
 
 function App() {
   const [input, setInput] = useState('');
-  
+
   const [chats, setChats] = useState([
     { id: 1, title: 'New Conversation', messages: [] }
   ]);
   const [activeChatId, setActiveChatId] = useState(1);
-  
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-
   const [chatMenu, setChatMenu] = useState(null); 
   const [showInputMenu, setShowInputMenu] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [quizTopic, setQuizTopic] = useState('');
   const [quizItems, setQuizItems] = useState('5');
   const [quizParts, setQuizParts] = useState('1');
   const [partTypes, setPartTypes] = useState({ 0: 'multiple choice', 1: 'multiple choice', 2: 'multiple choice' });
-  
   const [enableTimer, setEnableTimer] = useState(false);
   const [timePerPart, setTimePerPart] = useState({ 0: 5, 1: 5, 2: 5 }); 
   const [timeLeft, setTimeLeft] = useState(0); 
-  
   const [activeQuizData, setActiveQuizData] = useState(null);
   const [currentPartIndex, setCurrentPartIndex] = useState(0);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [enumInput, setEnumInput] = useState('');
-
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const sendingRef = useRef(false);
-
   const API_BASE_URL = window.location.hostname === 'localhost' 
+
     ? 'http://localhost:3001' 
     : 'https://share-cn0y.onrender.com';
 
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
   const messages = activeChat.messages;
-
   const [liveElapsed, setLiveElapsed] = useState(0);
   const responseStartRef = useRef(null);
-
   const [quizFile, setQuizFile] = useState(null);
   const [fileInstructions, setFileInstructions] = useState('');
-  const [chatFile, setChatFile] = useState(null); // New state for general chat files
-  const [chatFilePreview, setChatFilePreview] = useState(null); // Object URL preview for image attachments
-
+  const [chatFile, setChatFile] = useState(null);
+  const [chatFilePreview, setChatFilePreview] = useState(null);
+--
   useEffect(() => {
     if (!isTyping) return;
     const tick = setInterval(() => {
@@ -67,6 +59,7 @@ function App() {
     return () => clearInterval(tick);
   }, [isTyping]);
   
+  // --- Track viewport size to switch between mobile/desktop sidebar behavior ---
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -110,7 +103,6 @@ function App() {
     }
   }, [activeQuizData, enableTimer, timeLeft]);
 
-  // Build/revoke an object URL preview whenever the attached chat file changes
   useEffect(() => {
     if (chatFile && chatFile.type && chatFile.type.startsWith('image/')) {
       const url = URL.createObjectURL(chatFile);
@@ -168,7 +160,6 @@ function App() {
     e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
   };
 
-  // --- STREAMING CHAT CONSUMER ---
   const sendMessage = async () => {
     if ((!input.trim() && !chatFile) || isTyping || sendingRef.current) return;
     sendingRef.current = true;
@@ -177,7 +168,6 @@ function App() {
     const currentFile = chatFile;
     const isImageFile = currentFile && currentFile.type && currentFile.type.startsWith('image/');
 
-    // Keep the preview URL alive on the message itself (don't revoke it, the message bubble needs it)
     const attachedImageUrl = isImageFile ? URL.createObjectURL(currentFile) : null;
 
     const displayMsg = currentFile && !isImageFile
@@ -191,9 +181,9 @@ function App() {
       fileName: currentFile ? currentFile.name : null 
     }];
     updateActiveChatMessages(newMessages);
-    
+
     setInput('');
-    setChatFile(null); // Clear from UI immediately
+    setChatFile(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -221,7 +211,6 @@ function App() {
       let response;
       
       if (currentFile) {
-        // Send file via FormData
         const formData = new FormData();
         formData.append('file', currentFile);
         formData.append('message', userMsgText);
@@ -232,7 +221,6 @@ function App() {
           body: formData,
         });
       } else {
-        // Send text via standard JSON
         response = await fetch(`${API_BASE_URL}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -361,7 +349,7 @@ function App() {
     
     const isTrueFalse = currentPart.partTitle.toLowerCase().includes('true');
     const hasOptionsArray = Array.isArray(currentQ.options) && currentQ.options.length > 0;
-    
+
     const currentAns = hasOptionsArray || isTrueFalse ? selectedAnswer : enumInput;
 
     const updatedAnswers = { ...userAnswers, [questionKey]: currentAns };
@@ -495,7 +483,7 @@ function App() {
       backgroundColor: '#1e1e1e', color: '#ffffff', overflow: 'hidden' 
     }}>
       
-      {/* Sidebar */}
+      {/* ================= SIDEBAR ================= */}
       <div style={{ 
         width: '280px', flexShrink: 0, backgroundColor: '#383838', display: 'flex', flexDirection: 'column', 
         padding: '20px 15px', position: isMobile ? 'absolute' : 'relative', height: '100%',
@@ -504,6 +492,7 @@ function App() {
         transition: 'margin-left 0.3s ease, left 0.3s ease', zIndex: 50, boxSizing: 'border-box'
       }}>
         
+        {/* Logo badge */}
         <div style={{ 
           position: 'absolute', left: 0, top: '25px', backgroundColor: '#ffffff', color: '#000000', 
           padding: '10px 24px 10px 18px', borderRadius: '0 28px 28px 0', fontWeight: '900', 
@@ -512,6 +501,7 @@ function App() {
           P.E.D.R.O
         </div>
 
+        {/* New chat button */}
         <div style={{ position: 'absolute', right: isSidebarOpen ? '-23px' : '-70px', top: '20px', zIndex: 30, transition: 'right 0.3s ease' }}>
           <button 
             onClick={createNewChat}
@@ -526,6 +516,7 @@ function App() {
           </button>
         </div>
 
+        {/* Sidebar collapse/expand toggle */}
         <div style={{ position: 'absolute', right: '-16px', top: '50%', transform: 'translateY(-50%)', zIndex: 40 }}>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -547,6 +538,7 @@ function App() {
           </button>
         </div>
 
+        {/* Chat list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', paddingRight: '5px', marginTop: '75px', flex: 1 }}>
           {chats.map((chat) => (
             <div 
@@ -576,6 +568,7 @@ function App() {
           ))}
         </div>
 
+        {/* User profile footer */}
         <div style={{ backgroundColor: '#1e1e1e', borderRadius: '16px', padding: '12px', display: 'flex', alignItems: 'center', gap: '12px', marginTop: '15px', flexShrink: 0 }}>
           <div style={{ position: 'relative', width: '42px', height: '42px', flexShrink: 0 }}>
             <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#555', position: 'absolute', top: 0, left: 0, zIndex: 1 }} />
@@ -588,15 +581,17 @@ function App() {
         </div>
       </div>
 
-      {/* Main Chat Area */}
+      {/* ================= MAIN CHAT AREA ================= */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#262626', position: 'relative', overflow: 'hidden', zIndex: 10, boxSizing: 'border-box' }}>
         
+        {/* Top-right menu button */}
         <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 15 }}>
           <button style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#383838', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
             <img src="/icons/menu-dots.png" alt="menu" style={{ width: '22px', height: '22px', objectFit: 'contain' }} onError={(e)=>{e.target.style.display='none'}} />
           </button>
         </div>
         
+        {/* Message list (or empty-state hero text) */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '80px 20px 20px 20px', display: 'flex', flexDirection: 'column', justifyContent: messages.length === 0 ? 'center' : 'flex-start', alignItems: messages.length === 0 ? 'center' : 'flex-start', width: '100%', boxSizing: 'border-box' }}>
           {messages.length === 0 ? (
             <div className="message-animate" style={{ fontSize: 'clamp(36px, 8vw, 56px)', color: '#ffffff', fontWeight: 'bold', textAlign: 'center', letterSpacing: '-1px' }}>
@@ -615,6 +610,7 @@ function App() {
                           <span style={{ color: '#777', fontWeight: 'normal' }}>· {msg.duration.toFixed(1)}s</span>
                         )}
                       </div>
+                      {/* Inline image thumbnail for image attachments sent by the user */}
                       {msg.role === 'user' && msg.image && (
                         <img
                           src={msg.image}
@@ -653,11 +649,11 @@ function App() {
           )}
         </div>
 
-        {/* Input Bar */}
+        {/* ================= INPUT BAR ================= */}
         <div style={{ padding: '10px 20px 20px 20px', display: 'flex', justifyContent: 'center', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
           <div style={{ position: 'relative', display: 'flex', width: '100%', maxWidth: '850px', backgroundColor: '#383838', borderRadius: '24px', padding: '8px 12px 8px 14px', alignItems: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', boxSizing: 'border-box' }}>
             
-            {/* File Attachment Chip */}
+            {/* Pending attachment preview (image thumbnail or file-name chip) */}
             {chatFile && (
               <div style={{ position: 'absolute', bottom: 'calc(100% + 10px)', left: '15px', background: '#444', padding: chatFilePreview ? '8px' : '6px 12px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #555', zIndex: 20 }}>
                 {chatFilePreview ? (
@@ -672,6 +668,7 @@ function App() {
               </div>
             )}
 
+            {/* "+" menu: create quiz / upload file */}
             {showInputMenu && (
               <div className="input-floating-menu" style={{ 
                 position: 'absolute', bottom: 'calc(100% + 10px)', left: '10px', 
@@ -766,6 +763,7 @@ function App() {
         </div>
       </div>
 
+      {/* ================= CHAT OPTIONS MENU (rename/delete) ================= */}
       {chatMenu && (
         <div className="floating-chat-menu" style={{ position: 'fixed', top: chatMenu.top, left: chatMenu.left, backgroundColor: '#1e1e1e', border: '1px solid #444', borderRadius: '12px', padding: '6px', width: '130px', zIndex: 9999, boxShadow: '0 8px 16px rgba(0,0,0,0.6)' }}>
           <div onClick={(e) => { e.stopPropagation(); renameChat(chatMenu.id, chatMenu.title); }} style={{ padding: '8px', fontSize: '15px', cursor: 'pointer', borderRadius: '6px', color: '#ffffff' }}>Rename</div>
@@ -773,6 +771,7 @@ function App() {
         </div>
       )}
 
+      {/* ================= QUIZ CREATION MODAL ================= */}
       {showQuizModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#2b2b2b', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: '15px', color: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -860,6 +859,7 @@ function App() {
         </div>
       )}
 
+      {/* ================= ACTIVE QUIZ SESSION MODAL ================= */}
       {activeQuizData && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '20px', boxSizing: 'border-box' }}>
           <div style={{ position: 'relative', backgroundColor: '#222', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '20px', color: '#ffffff', border: '1px solid #444', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>

@@ -58,8 +58,7 @@ function App() {
     }, 100);
     return () => clearInterval(tick);
   }, [isTyping]);
-  
-  // --- Track viewport size to switch between mobile/desktop sidebar behavior ---
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);

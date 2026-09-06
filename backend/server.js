@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, createUserContent, createPartFromUri } from '@google/genai';
 
 dotenv.config();
 
@@ -53,15 +53,21 @@ app.post('/api/chat', upload.single('file'), async (req, res) => {
       }
     });
 
-    // 3. Send message with or without the file to Gemini
-    let chatPayload;
+    // 3. Send message with or without the file to Gemini structured correctly
+    let resultStream;
     if (uploadedFile) {
-      chatPayload = [uploadedFile, cleanedMessage || "Please analyze this attached document."];
+      const filePart = createPartFromUri(uploadedFile.uri, uploadedFile.mimeType);
+      resultStream = await chat.sendMessageStream({
+        message: createUserContent([
+          filePart,
+          cleanedMessage || "Please analyze this attached document."
+        ])
+      });
     } else {
-      chatPayload = cleanedMessage;
+      resultStream = await chat.sendMessageStream({
+        message: cleanedMessage
+      });
     }
-
-    const resultStream = await chat.sendMessageStream({ message: chatPayload });
     
     for await (const chunk of resultStream) {
       const chunkText = chunk.text;
@@ -135,7 +141,7 @@ app.post('/api/quiz/generate-from-file', upload.single('document'), async (req, 
 
     const uploadedFile = await ai.files.upload({
       file: req.file.path,
-      mimeType: req.file.mimetype
+      config: { mimeType: req.file.mimetype }
     });
 
     let partsDescription = "";
@@ -165,9 +171,11 @@ app.post('/api/quiz/generate-from-file', upload.single('document'), async (req, 
       ]
     }`;
 
+    const filePart = createPartFromUri(uploadedFile.uri, uploadedFile.mimeType);
+
     const response = await ai.models.generateContent({
       model: 'gemini-3.5-flash-lite',
-      contents: [uploadedFile, prompt],
+      contents: createUserContent([filePart, prompt]),
       config: { responseMimeType: "application/json" }
     });
 

@@ -55,6 +55,7 @@ function App() {
   const [quizFile, setQuizFile] = useState(null);
   const [fileInstructions, setFileInstructions] = useState('');
   const [chatFile, setChatFile] = useState(null); // New state for general chat files
+  const [chatFilePreview, setChatFilePreview] = useState(null); // Object URL preview for image attachments
 
   useEffect(() => {
     if (!isTyping) return;
@@ -108,6 +109,17 @@ function App() {
       handleNextQuestion(true);
     }
   }, [activeQuizData, enableTimer, timeLeft]);
+
+  // Build/revoke an object URL preview whenever the attached chat file changes
+  useEffect(() => {
+    if (chatFile && chatFile.type && chatFile.type.startsWith('image/')) {
+      const url = URL.createObjectURL(chatFile);
+      setChatFilePreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setChatFilePreview(null);
+    }
+  }, [chatFile]);
 
   const createNewChat = () => {
     const newChatObj = { id: Date.now(), title: 'New Conversation', messages: [] };
@@ -163,12 +175,21 @@ function App() {
     
     const userMsgText = input;
     const currentFile = chatFile;
-    
-    const displayMsg = currentFile 
+    const isImageFile = currentFile && currentFile.type && currentFile.type.startsWith('image/');
+
+    // Keep the preview URL alive on the message itself (don't revoke it, the message bubble needs it)
+    const attachedImageUrl = isImageFile ? URL.createObjectURL(currentFile) : null;
+
+    const displayMsg = currentFile && !isImageFile
       ? `*📄 Attached File: ${currentFile.name}*\n\n${userMsgText}`
       : userMsgText;
       
-    const newMessages = [...messages, { role: 'user', text: displayMsg }];
+    const newMessages = [...messages, { 
+      role: 'user', 
+      text: displayMsg, 
+      image: attachedImageUrl, 
+      fileName: currentFile ? currentFile.name : null 
+    }];
     updateActiveChatMessages(newMessages);
     
     setInput('');
@@ -594,17 +615,34 @@ function App() {
                           <span style={{ color: '#777', fontWeight: 'normal' }}>· {msg.duration.toFixed(1)}s</span>
                         )}
                       </div>
+                      {msg.role === 'user' && msg.image && (
+                        <img
+                          src={msg.image}
+                          alt={msg.fileName || 'Attached image'}
+                          style={{
+                            display: 'block',
+                            maxWidth: '280px',
+                            maxHeight: '280px',
+                            width: '100%',
+                            objectFit: 'cover',
+                            borderRadius: '12px',
+                            marginBottom: msg.text ? '10px' : 0
+                          }}
+                        />
+                      )}
                       {isPendingBotBubble ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '14px' }}>
                           <span className="typing-dot"></span><span className="typing-dot"></span><span className="typing-dot"></span>
                           <span style={{ fontSize: '11px', color: '#888' }}>{liveElapsed.toFixed(1)}s</span>
                         </div>
                       ) : (
-                        <div className="markdown-content">
-                          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                            {msg.text}
-                          </ReactMarkdown>
-                        </div>
+                        msg.text && (
+                          <div className="markdown-content">
+                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                              {msg.text}
+                            </ReactMarkdown>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -621,8 +659,15 @@ function App() {
             
             {/* File Attachment Chip */}
             {chatFile && (
-              <div style={{ position: 'absolute', top: '-40px', left: '15px', background: '#444', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #555', zIndex: 20 }}>
-                📄 {chatFile.name}
+              <div style={{ position: 'absolute', bottom: 'calc(100% + 10px)', left: '15px', background: '#444', padding: chatFilePreview ? '8px' : '6px 12px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #555', zIndex: 20 }}>
+                {chatFilePreview ? (
+                  <>
+                    <img src={chatFilePreview} alt={chatFile.name} style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '10px' }} />
+                    <span style={{ maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chatFile.name}</span>
+                  </>
+                ) : (
+                  <>📄 {chatFile.name}</>
+                )}
                 <button onClick={() => setChatFile(null)} style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: '16px', padding: 0, display: 'flex', alignItems: 'center' }}>✖</button>
               </div>
             )}

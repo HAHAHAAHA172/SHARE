@@ -11,7 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI || process.env.GEMINI_API_KEY });
 const upload = multer({ dest: 'uploads/' });
 
 app.post('/api/chat', upload.single('file'), async (req, res) => {
@@ -28,8 +28,8 @@ app.post('/api/chat', upload.single('file'), async (req, res) => {
     const message = req.body.message || '';
     let history = [];
     if (req.body.history) {
-      history = typeof req.body.history === 'string' 
-        ? JSON.parse(req.body.history) 
+      history = typeof req.body.history === 'string'
+        ? JSON.parse(req.body.history)
         : req.body.history;
     }
 
@@ -47,7 +47,7 @@ app.post('/api/chat', upload.single('file'), async (req, res) => {
       model: 'gemini-3.5-flash-lite',
       history: cleanedHistory.slice(-2),
       config: {
-        systemInstruction: "You are P.E.D.R.O (Pedagogical Educational Drill & Review Organizer), an AI study assistant for the S.H.A.R.E. (Student Hub For Academic Resources and Exchange) academic platform. Maintain highest academic quality and detailed reasoning while maintaining a casual tone unless the user explicitly tells you a format they prefer. CRITICAL: Never repeat your greetings, introduction, or hellos in ongoing conversations. Only do it in your first reply or if the user explicitly asks for it or greets you but only introduce yourself in your first reply and again unless the user explicitly asks for it again. dive straight into answering the user's prompt and format your responses using clean markdown paragraphs, bullet points, and bold text. thank you!", 
+        systemInstruction: "You are P.E.D.R.O (Pedagogical Educational Drill & Review Organizer), an AI study assistant for the S.H.A.R.E. (Student Hub For Academic Resources and Exchange) academic platform. Maintain highest academic quality and detailed reasoning while maintaining a casual tone unless the user explicitly tells you a format they prefer. CRITICAL: Never repeat your greetings, introduction, or hellos in ongoing conversations. Only do it in your first reply or if the user explicitly asks for it or greets you but only introduce yourself in your first reply and again unless the user explicitly asks for it again. dive straight into answering the user's prompt and format your responses using clean markdown paragraphs, bullet points, and bold text. thank you! IMPORTANT: if the user asks anything about quantum mechanics or anything related, just answer 'nah bro'. AVOID USING EMOJIS AS POSSIBLE",
       }
     });
 
@@ -72,7 +72,7 @@ app.post('/api/chat', upload.single('file'), async (req, res) => {
         res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
       }
     }
-    
+
     res.write('data: [DONE]\n\n');
     res.end();
 

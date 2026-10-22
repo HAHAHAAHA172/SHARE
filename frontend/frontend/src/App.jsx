@@ -15,7 +15,7 @@ function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-  const [chatMenu, setChatMenu] = useState(null); 
+  const [chatMenu, setChatMenu] = useState(null);
   const [showInputMenu, setShowInputMenu] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showQuizModal, setShowQuizModal] = useState(false);
@@ -24,8 +24,8 @@ function App() {
   const [quizParts, setQuizParts] = useState('1');
   const [partTypes, setPartTypes] = useState({ 0: 'multiple choice', 1: 'multiple choice', 2: 'multiple choice' });
   const [enableTimer, setEnableTimer] = useState(false);
-  const [timePerPart, setTimePerPart] = useState({ 0: 5, 1: 5, 2: 5 }); 
-  const [timeLeft, setTimeLeft] = useState(0); 
+  const [timePerPart, setTimePerPart] = useState({ 0: 5, 1: 5, 2: 5 });
+  const [timeLeft, setTimeLeft] = useState(0);
   const [activeQuizData, setActiveQuizData] = useState(null);
   const [currentPartIndex, setCurrentPartIndex] = useState(0);
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -35,9 +35,9 @@ function App() {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const sendingRef = useRef(false);
-  const API_BASE_URL = window.location.hostname === 'localhost' 
+  const API_BASE_URL = window.location.hostname === 'localhost'
 
-    ? 'http://localhost:3001' 
+    ? 'http://localhost:3001'
     : 'https://share-cn0y.onrender.com';
 
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
@@ -48,7 +48,7 @@ function App() {
   const [fileInstructions, setFileInstructions] = useState('');
   const [chatFile, setChatFile] = useState(null);
   const [chatFilePreview, setChatFilePreview] = useState(null);
---
+
   useEffect(() => {
     if (!isTyping) return;
     const tick = setInterval(() => {
@@ -162,7 +162,7 @@ function App() {
   const sendMessage = async () => {
     if ((!input.trim() && !chatFile) || isTyping || sendingRef.current) return;
     sendingRef.current = true;
-    
+
     const userMsgText = input;
     const currentFile = chatFile;
     const isImageFile = currentFile && currentFile.type && currentFile.type.startsWith('image/');
@@ -172,12 +172,12 @@ function App() {
     const displayMsg = currentFile && !isImageFile
       ? `*📄 Attached File: ${currentFile.name}*\n\n${userMsgText}`
       : userMsgText;
-      
-    const newMessages = [...messages, { 
-      role: 'user', 
-      text: displayMsg, 
-      image: attachedImageUrl, 
-      fileName: currentFile ? currentFile.name : null 
+
+    const newMessages = [...messages, {
+      role: 'user',
+      text: displayMsg,
+      image: attachedImageUrl,
+      fileName: currentFile ? currentFile.name : null
     }];
     updateActiveChatMessages(newMessages);
 
@@ -208,13 +208,13 @@ function App() {
 
     try {
       let response;
-      
+
       if (currentFile) {
         const formData = new FormData();
         formData.append('file', currentFile);
         formData.append('message', userMsgText);
         formData.append('history', JSON.stringify(slidingWindowHistory));
-        
+
         response = await fetch(`${API_BASE_URL}/api/chat`, {
           method: 'POST',
           body: formData,
@@ -235,10 +235,10 @@ function App() {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        
+
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n\n');
-        
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const dataStr = line.replace('data: ', '').trim();
@@ -256,7 +256,7 @@ function App() {
                 botReply = parsed.error;
                 updateActiveChatMessages([...newMessages, { role: 'bot', text: botReply }]);
               }
-            } catch (e) {}
+            } catch (e) { }
           }
         }
       }
@@ -279,12 +279,12 @@ function App() {
   const startQuizGeneration = async () => {
     setShowQuizModal(false);
     setIsTyping(true);
-    
-    const quizUserMsg = { 
-      role: 'user', 
-      text: quizFile 
+
+    const quizUserMsg = {
+      role: 'user',
+      text: quizFile
         ? `Create a mock quiz based on the uploaded file "${quizFile.name}". Instructions: ${fileInstructions || 'General coverage'} (${quizItems} items, ${quizParts} parts)`
-        : `Create a mock quiz about: ${quizTopic || 'General Knowledge'} (${quizItems} items, ${quizParts} parts)` 
+        : `Create a mock quiz about: ${quizTopic || 'General Knowledge'} (${quizItems} items, ${quizParts} parts)`
     };
     const updatedMsgs = [...messages, quizUserMsg];
     updateActiveChatMessages(updatedMsgs, `Quiz: ${quizFile ? quizFile.name : (quizTopic || 'General Knowledge')}`);
@@ -308,28 +308,28 @@ function App() {
         response = await fetch(`${API_BASE_URL}/api/quiz/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            topic: quizTopic, items: parseInt(quizItems), parts: parseInt(quizParts), partTypes: partTypes 
+          body: JSON.stringify({
+            topic: quizTopic, items: parseInt(quizItems), parts: parseInt(quizParts), partTypes: partTypes
           }),
         });
       }
 
       const data = await response.json();
-      
+
       if (!data || !data.parts || data.parts.length === 0) {
         throw new Error("Invalid quiz structure returned from server.");
       }
-      
+
       setActiveQuizData(data);
       setCurrentPartIndex(0);
       setCurrentQIndex(0);
       setUserAnswers({});
       setSelectedAnswer('');
       setEnumInput('');
-      
+
       if (enableTimer) setTimeLeft((timePerPart[0] || 5) * 60);
 
-      updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: `✨ Quiz generated successfully! Launching **${data.title}** now...` }]);
+      updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: `Quiz generated successfully! Launching **${data.title}** now...` }]);
     } catch (error) {
       console.error('Quiz loading error:', error);
       setActiveQuizData(null);
@@ -345,7 +345,7 @@ function App() {
     const currentPart = activeQuizData.parts[currentPartIndex];
     const questionKey = `${currentPartIndex}-${currentQIndex}`;
     const currentQ = currentPart.questions[currentQIndex];
-    
+
     const isTrueFalse = currentPart.partTitle.toLowerCase().includes('true');
     const hasOptionsArray = Array.isArray(currentQ.options) && currentQ.options.length > 0;
 
@@ -353,7 +353,7 @@ function App() {
 
     const updatedAnswers = { ...userAnswers, [questionKey]: currentAns };
     if (!forceSkipPart) setUserAnswers(updatedAnswers);
-    
+
     setSelectedAnswer('');
     setEnumInput('');
 
@@ -372,7 +372,7 @@ function App() {
   const finishQuiz = async (finalAnswers) => {
     let score = 0;
     let totalQuestions = 0;
-    let mistakesData = []; 
+    let mistakesData = [];
 
     activeQuizData.parts.forEach((part, pIdx) => {
       part.questions.forEach((q, qIdx) => {
@@ -380,7 +380,7 @@ function App() {
         const rawUserAns = finalAnswers[`${pIdx}-${qIdx}`] || '';
         const userAns = rawUserAns.trim().toLowerCase();
         const correctAns = (q.answer || '').trim().toLowerCase();
-        
+
         if (userAns === correctAns) {
           score++;
         } else {
@@ -444,7 +444,7 @@ function App() {
                   flushTimer = setTimeout(() => { flush(); flushTimer = null; }, 50);
                 }
               }
-            } catch (e) {}
+            } catch (e) { }
           }
         }
       }
@@ -475,26 +475,26 @@ function App() {
   };
 
   return (
-    <div style={{ 
-      position: 'fixed', top: 0, left: 0, width: '100%', 
-      height: isMobile ? `${windowHeight}px` : '100vh', 
-      display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, -apple-system, sans-serif', 
-      backgroundColor: '#1e1e1e', color: '#ffffff', overflow: 'hidden' 
+    <div style={{
+      position: 'fixed', top: 0, left: 0, width: '100%',
+      height: isMobile ? `${windowHeight}px` : '100vh',
+      display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, -apple-system, sans-serif',
+      backgroundColor: '#1e1e1e', color: '#ffffff', overflow: 'hidden'
     }}>
-      
+
       {/* ================= SIDEBAR ================= */}
-      <div style={{ 
-        width: '280px', flexShrink: 0, backgroundColor: '#383838', display: 'flex', flexDirection: 'column', 
+      <div style={{
+        width: '280px', flexShrink: 0, backgroundColor: '#383838', display: 'flex', flexDirection: 'column',
         padding: '20px 15px', position: isMobile ? 'absolute' : 'relative', height: '100%',
         left: isMobile ? (isSidebarOpen ? '0' : '-280px') : 'auto',
         marginLeft: !isMobile ? (isSidebarOpen ? '0' : '-280px') : '0',
         transition: 'margin-left 0.3s ease, left 0.3s ease', zIndex: 50, boxSizing: 'border-box'
       }}>
-        
+
         {/* Logo badge */}
-        <div style={{ 
-          position: 'absolute', left: 0, top: '25px', backgroundColor: '#ffffff', color: '#000000', 
-          padding: '10px 24px 10px 18px', borderRadius: '0 28px 28px 0', fontWeight: '900', 
+        <div style={{
+          position: 'absolute', left: 0, top: '25px', backgroundColor: '#ffffff', color: '#000000',
+          padding: '10px 24px 10px 18px', borderRadius: '0 28px 28px 0', fontWeight: '900',
           fontSize: '22px', letterSpacing: '1.5px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', zIndex: 30
         }}>
           P.E.D.R.O
@@ -502,25 +502,25 @@ function App() {
 
         {/* New chat button */}
         <div style={{ position: 'absolute', right: isSidebarOpen ? '-23px' : '-70px', top: '20px', zIndex: 30, transition: 'right 0.3s ease' }}>
-          <button 
+          <button
             onClick={createNewChat}
-            style={{ 
-              boxSizing: 'border-box', width: '46px', height: '46px', borderRadius: '50%', backgroundColor: '#000000', color: '#ffffff', 
-              border: '3px solid #262626', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            style={{
+              boxSizing: 'border-box', width: '46px', height: '46px', borderRadius: '50%', backgroundColor: '#000000', color: '#ffffff',
+              border: '3px solid #262626', display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.6)', padding: 0
             }}
             title="New Chat"
           >
-            <img src="/icons/new-chat.png" alt="New Chat" style={{ width: '22px', height: '22px', objectFit: 'contain' }} onError={(e)=>{e.target.style.display='none'}} />
+            <img src="/icons/new-chat.png" alt="New Chat" style={{ width: '22px', height: '22px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none' }} />
           </button>
         </div>
 
         {/* Sidebar collapse/expand toggle */}
         <div style={{ position: 'absolute', right: '-16px', top: '50%', transform: 'translateY(-50%)', zIndex: 40 }}>
-          <button 
+          <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            style={{ 
-              width: '32px', height: '72px', borderRadius: '16px', backgroundColor: '#383838', border: '1px solid #555', 
+            style={{
+              width: '32px', height: '72px', borderRadius: '16px', backgroundColor: '#383838', border: '1px solid #555',
               display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ffffff', gap: '3px'
             }}
             title="Toggle Sidebar"
@@ -540,20 +540,20 @@ function App() {
         {/* Chat list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', paddingRight: '5px', marginTop: '75px', flex: 1 }}>
           {chats.map((chat) => (
-            <div 
-              key={chat.id} 
+            <div
+              key={chat.id}
               onClick={() => { setActiveChatId(chat.id); if (isMobile) setIsSidebarOpen(false); }}
-              style={{ 
-                backgroundColor: chat.id === activeChatId ? '#2a2a2a' : '#000000', color: '#ffffff', 
-                padding: '10px 12px 10px 18px', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', 
+              style={{
+                backgroundColor: chat.id === activeChatId ? '#2a2a2a' : '#000000', color: '#ffffff',
+                padding: '10px 12px 10px 18px', borderRadius: '24px', display: 'flex', justifyContent: 'space-between',
                 alignItems: 'center', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: chat.id === activeChatId ? '1px solid #555' : '1px solid transparent'
               }}
             >
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>{chat.title}</span>
-              <button 
+              <button
                 onClick={(e) => {
-                  e.stopPropagation(); 
-                  if (chatMenu && chatMenu.id === chat.id) setChatMenu(null); 
+                  e.stopPropagation();
+                  if (chatMenu && chatMenu.id === chat.id) setChatMenu(null);
                   else {
                     const rect = e.currentTarget.getBoundingClientRect();
                     setChatMenu({ id: chat.id, title: chat.title, top: rect.bottom + 8, left: rect.left - 80 });
@@ -561,7 +561,7 @@ function App() {
                 }}
                 style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#383838', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               >
-                <img src="/icons/chat-dots.png" alt="options" style={{ width: '16px', height: '16px', objectFit: 'contain' }} onError={(e)=>{e.target.style.display='none'}} />
+                <img src="/icons/chat-dots.png" alt="options" style={{ width: '16px', height: '16px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none' }} />
               </button>
             </div>
           ))}
@@ -582,14 +582,14 @@ function App() {
 
       {/* ================= MAIN CHAT AREA ================= */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#262626', position: 'relative', overflow: 'hidden', zIndex: 10, boxSizing: 'border-box' }}>
-        
+
         {/* Top-right menu button */}
         <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 15 }}>
           <button style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#383838', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-            <img src="/icons/menu-dots.png" alt="menu" style={{ width: '22px', height: '22px', objectFit: 'contain' }} onError={(e)=>{e.target.style.display='none'}} />
+            <img src="/icons/menu-dots.png" alt="menu" style={{ width: '22px', height: '22px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none' }} />
           </button>
         </div>
-        
+
         {/* Message list (or empty-state hero text) */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '80px 20px 20px 20px', display: 'flex', flexDirection: 'column', justifyContent: messages.length === 0 ? 'center' : 'flex-start', alignItems: messages.length === 0 ? 'center' : 'flex-start', width: '100%', boxSizing: 'border-box' }}>
           {messages.length === 0 ? (
@@ -651,7 +651,7 @@ function App() {
         {/* ================= INPUT BAR ================= */}
         <div style={{ padding: '10px 20px 20px 20px', display: 'flex', justifyContent: 'center', flexShrink: 0, width: '100%', boxSizing: 'border-box' }}>
           <div style={{ position: 'relative', display: 'flex', width: '100%', maxWidth: '850px', backgroundColor: '#383838', borderRadius: '24px', padding: '8px 12px 8px 14px', alignItems: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', boxSizing: 'border-box' }}>
-            
+
             {/* Pending attachment preview (image thumbnail or file-name chip) */}
             {chatFile && (
               <div style={{ position: 'absolute', bottom: 'calc(100% + 10px)', left: '15px', background: '#444', padding: chatFilePreview ? '8px' : '6px 12px', borderRadius: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #555', zIndex: 20 }}>
@@ -669,90 +669,90 @@ function App() {
 
             {/* "+" menu: create quiz / upload file */}
             {showInputMenu && (
-              <div className="input-floating-menu" style={{ 
-                position: 'absolute', bottom: 'calc(100% + 10px)', left: '10px', 
-                backgroundColor: '#2b2b2b', border: '1px solid #444', borderRadius: '12px', 
-                padding: '6px', width: '180px', zIndex: 100, boxShadow: '0 8px 16px rgba(0,0,0,0.6)' 
+              <div className="input-floating-menu" style={{
+                position: 'absolute', bottom: 'calc(100% + 10px)', left: '10px',
+                backgroundColor: '#2b2b2b', border: '1px solid #444', borderRadius: '12px',
+                padding: '6px', width: '180px', zIndex: 100, boxShadow: '0 8px 16px rgba(0,0,0,0.6)'
               }}>
-                <div 
-                  onClick={() => { setShowQuizModal(true); setShowInputMenu(false); }} 
+                <div
+                  onClick={() => { setShowQuizModal(true); setShowInputMenu(false); }}
                   style={{ padding: '10px 12px', fontSize: '14px', cursor: 'pointer', borderRadius: '8px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px' }}
                   onMouseOver={(e) => e.target.style.background = '#383838'}
                   onMouseOut={(e) => e.target.style.background = 'transparent'}
                 >
-                  📝 Create a Quiz
+                  Create a Quiz
                 </div>
-                
+
                 {/* Visual Divider */}
                 <div style={{ height: '1px', background: '#444', margin: '4px 0' }} />
-                
+
                 {/* Upload File Button */}
-                <label 
+                <label
                   style={{ padding: '10px 12px', fontSize: '14px', cursor: 'pointer', borderRadius: '8px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}
                   onMouseOver={(e) => e.target.style.background = '#383838'}
                   onMouseOut={(e) => e.target.style.background = 'transparent'}
                 >
-                  📄 Upload File
-                  <input 
-                    type="file" 
-                    style={{ display: 'none' }} 
-                    accept=".pdf,.txt,.docx,image/*" 
+                  Upload File
+                  <input
+                    type="file"
+                    style={{ display: 'none' }}
+                    accept=".pdf,.txt,.docx,.pptx,image/*"
                     onChange={(e) => {
-                      if(e.target.files[0]) {
+                      if (e.target.files[0]) {
                         setChatFile(e.target.files[0]);
                         setShowInputMenu(false);
                       }
-                    }} 
+                    }}
                   />
                 </label>
               </div>
             )}
 
-            <button 
+            <button
               className="plus-button"
               onClick={() => setShowInputMenu(!showInputMenu)}
               style={{ background: '#2e2e2e', border: 'none', borderRadius: '50%', width: '38px', height: '38px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}
             >
-              <img src="/icons/more-options.png" alt="More Options" style={{ width: '18px', height: '18px', objectFit: 'contain' }} onError={(e)=>{e.target.style.display='none'}} />
+              <img src="/icons/more-options.png" alt="More Options" style={{ width: '18px', height: '18px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none' }} />
             </button>
 
-            <textarea 
+            <textarea
               ref={textareaRef}
-              value={input} 
-              onChange={handleTyping} 
+              value={input}
+              onChange={handleTyping}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault(); 
+                  e.preventDefault();
                   sendMessage();
                 }
-              }} 
+              }}
               disabled={isTyping}
               rows={1}
-              style={{ 
-                flexGrow: 1, 
-                border: 'none', 
-                outline: 'none', 
-                fontSize: '15px', 
-                padding: '8px 6px', 
-                backgroundColor: 'transparent', 
-                color: '#ffffff', 
+              style={{
+                flexGrow: 1,
+                border: 'none',
+                outline: 'none',
+                fontSize: '15px',
+                padding: '8px 6px',
+                backgroundColor: 'transparent',
+                color: '#ffffff',
                 minWidth: 0,
                 resize: 'none',
                 overflowY: 'auto',
                 lineHeight: '1.4',
-                maxHeight: '150px' 
-              }} 
-              placeholder={isTyping ? "PEDRO is thinking..." : "Ask me anything!"} 
+                maxHeight: '150px'
+              }}
+              placeholder={isTyping ? "PEDRO is thinking..." : "Ask me anything!"}
             />
 
-            <button 
-              className="send-btn" 
-              onClick={sendMessage} 
-              disabled={isTyping} 
-              style={{ 
-                background: '#ffffff', color: '#000000', border: 'none', borderRadius: '50%', 
-                width: '38px', height: '38px', cursor: isTyping ? 'default' : 'pointer', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            <button
+              className="send-btn"
+              onClick={sendMessage}
+              disabled={isTyping}
+              style={{
+                background: '#ffffff', color: '#000000', border: 'none', borderRadius: '50%',
+                width: '38px', height: '38px', cursor: isTyping ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '16px', fontWeight: 'bold', flexShrink: 0, opacity: isTyping ? 0.5 : 1, boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
               }}
             >
@@ -775,15 +775,15 @@ function App() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#2b2b2b', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: '15px', color: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2>Create a Mock Quiz</h2>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '13px', color: '#b0b0b0' }}>Source Material (Topic or File)</label>
-              
+
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <input 
-                  type="file" 
-                  accept=".pdf,.txt,.docx,image/*" 
-                  onChange={(e) => setQuizFile(e.target.files[0])} 
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.docx,.pptx,image/*"
+                  onChange={(e) => setQuizFile(e.target.files[0])}
                   style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', fontSize: '12px' }}
                 />
                 {quizFile && (
@@ -792,20 +792,20 @@ function App() {
               </div>
 
               {quizFile ? (
-                <input 
-                  type="text" 
-                  placeholder="Which page, chapter, or specific topic from the file?" 
-                  value={fileInstructions} 
-                  onChange={(e) => setFileInstructions(e.target.value)} 
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', marginTop: '5px' }} 
+                <input
+                  type="text"
+                  placeholder="Which page, chapter, or specific topic from the file?"
+                  value={fileInstructions}
+                  onChange={(e) => setFileInstructions(e.target.value)}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', marginTop: '5px' }}
                 />
               ) : (
-                <input 
-                  type="text" 
-                  placeholder="e.g. Intro to Psychology" 
-                  value={quizTopic} 
-                  onChange={(e) => setQuizTopic(e.target.value)} 
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', marginTop: '5px' }} 
+                <input
+                  type="text"
+                  placeholder="e.g. Intro to Psychology"
+                  value={quizTopic}
+                  onChange={(e) => setQuizTopic(e.target.value)}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', marginTop: '5px' }}
                 />
               )}
             </div>
@@ -813,7 +813,7 @@ function App() {
             <div style={{ display: 'flex', gap: '15px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
                 <label style={{ fontSize: '13px', color: '#b0b0b0' }}>Total Items (Max 15)</label>
-                <select value={quizItems} onChange={(e) => setQuizItems(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff' }}>{[...Array(15)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}</select>
+                <select value={quizItems} onChange={(e) => setQuizItems(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #444', background: '#1e1e1e', color: '#fff' }}>{[...Array(15)].map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}</select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
                 <label style={{ fontSize: '13px', color: '#b0b0b0' }}>Parts (Max 3)</label>
@@ -826,7 +826,7 @@ function App() {
                 {[...Array(parseInt(quizParts))].map((_, i) => (
                   <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <label style={{ fontSize: '11px', color: '#aaa' }}>Part {i + 1}</label>
-                    <select value={partTypes[i] || 'multiple choice'} onChange={(e) => setPartTypes({...partTypes, [i]: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', fontSize: '12px' }}>
+                    <select value={partTypes[i] || 'multiple choice'} onChange={(e) => setPartTypes({ ...partTypes, [i]: e.target.value })} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #444', background: '#1e1e1e', color: '#fff', fontSize: '12px' }}>
                       <option value="multiple choice">Multiple Choice</option>
                       <option value="true or false">True or False</option>
                       <option value="enumeration">Enumeration</option>
@@ -844,7 +844,7 @@ function App() {
                   {[...Array(parseInt(quizParts))].map((_, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                       <label style={{ fontSize: '11px', color: '#aaa' }}>Part {i + 1} (mins)</label>
-                      <input type="number" min="1" max="60" value={timePerPart[i]} onChange={(e) => setTimePerPart({...timePerPart, [i]: parseInt(e.target.value) || 1})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #444', background: '#1e1e1e', color: '#fff' }} />
+                      <input type="number" min="1" max="60" value={timePerPart[i]} onChange={(e) => setTimePerPart({ ...timePerPart, [i]: parseInt(e.target.value) || 1 })} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #444', background: '#1e1e1e', color: '#fff' }} />
                     </div>
                   ))}
                 </div>

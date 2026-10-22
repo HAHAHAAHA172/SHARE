@@ -48,6 +48,75 @@ function App() {
   const [fileInstructions, setFileInstructions] = useState('');
   const [chatFile, setChatFile] = useState(null);
   const [chatFilePreview, setChatFilePreview] = useState(null);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const [facingMode, setFacingMode] = useState('environment');
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const startCamera = async (mode = 'environment') => {
+    setCameraError(null);
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+      } catch (err) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Camera access error:', err);
+      setCameraError('Unable to access camera. Please allow camera permissions in your browser.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setShowCameraModal(false);
+    setCameraError(null);
+  };
+
+  const switchCamera = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    startCamera(nextMode);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        setChatFile(file);
+        stopCamera();
+      }
+    }, 'image/jpeg', 0.95);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTyping) return;
@@ -705,6 +774,23 @@ function App() {
                     }}
                   />
                 </label>
+
+                {/* Visual Divider */}
+                <div style={{ height: '1px', background: '#444', margin: '4px 0' }} />
+
+                {/* Take Photo Button */}
+                <div
+                  onClick={() => {
+                    setShowInputMenu(false);
+                    setShowCameraModal(true);
+                    startCamera(facingMode);
+                  }}
+                  style={{ padding: '10px 12px', fontSize: '14px', cursor: 'pointer', borderRadius: '8px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px' }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#383838'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  Take Photo
+                </div>
               </div>
             )}
 
@@ -753,10 +839,13 @@ function App() {
                 background: '#ffffff', color: '#000000', border: 'none', borderRadius: '50%',
                 width: '38px', height: '38px', cursor: isTyping ? 'default' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '16px', fontWeight: 'bold', flexShrink: 0, opacity: isTyping ? 0.5 : 1, boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                flexShrink: 0, opacity: isTyping ? 0.5 : 1, boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
               }}
             >
-              ↑
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+              </svg>
             </button>
           </div>
         </div>
@@ -767,6 +856,86 @@ function App() {
         <div className="floating-chat-menu" style={{ position: 'fixed', top: chatMenu.top, left: chatMenu.left, backgroundColor: '#1e1e1e', border: '1px solid #444', borderRadius: '12px', padding: '6px', width: '130px', zIndex: 9999, boxShadow: '0 8px 16px rgba(0,0,0,0.6)' }}>
           <div onClick={(e) => { e.stopPropagation(); renameChat(chatMenu.id, chatMenu.title); }} style={{ padding: '8px', fontSize: '15px', cursor: 'pointer', borderRadius: '6px', color: '#ffffff' }}>Rename</div>
           <div onClick={(e) => { e.stopPropagation(); deleteChat(chatMenu.id); }} style={{ padding: '8px', fontSize: '15px', cursor: 'pointer', borderRadius: '6px', color: '#ff4d4d', marginTop: '4px' }}>Delete</div>
+        </div>
+      )}
+
+      {/* ================= CAMERA MODAL ================= */}
+      {showCameraModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#1e1e1e', borderRadius: '20px', border: '1px solid #444', width: '100%', maxWidth: '520px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.7)', position: 'relative' }}>
+
+            {/* Header */}
+            <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>Take a Photo</div>
+              <button
+                onClick={stopCamera}
+                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer', padding: '4px 8px', borderRadius: '8px' }}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Video Viewport */}
+            <div style={{ position: 'relative', width: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', maxHeight: '60vh', overflow: 'hidden' }}>
+              {cameraError ? (
+                <div style={{ color: '#ff6b6b', padding: '20px', textAlign: 'center', fontSize: '14px' }}>
+                  <p>{cameraError}</p>
+                  <button onClick={() => startCamera(facingMode)} style={{ marginTop: '10px', padding: '8px 16px', background: '#333', border: '1px solid #555', color: '#fff', borderRadius: '8px', cursor: 'pointer' }}>
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <video
+                  ref={(el) => {
+                    videoRef.current = el;
+                    if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                      el.srcObject = streamRef.current;
+                    }
+                  }}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{ width: '100%', height: 'auto', objectFit: 'contain', maxHeight: '60vh', display: 'block' }}
+                />
+              )}
+            </div>
+
+            {/* Controls */}
+            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-around', backgroundColor: '#262626', borderTop: '1px solid #333' }}>
+              <button
+                onClick={switchCamera}
+                disabled={!!cameraError}
+                style={{ background: '#383838', border: '1px solid #555', color: '#fff', width: '44px', height: '44px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}
+                title="Switch Camera (Front/Back)"
+              >
+                🔄
+              </button>
+
+              {/* Shutter Button */}
+              <button
+                onClick={capturePhoto}
+                disabled={!!cameraError}
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  backgroundColor: '#ffffff',
+                  border: '5px solid #262626',
+                  outline: '3px solid #ffffff',
+                  cursor: cameraError ? 'not-allowed' : 'pointer',
+                  opacity: cameraError ? 0.4 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                }}
+                title="Capture Photo"
+              />
+
+              <div style={{ width: '44px' }} />
+            </div>
+          </div>
         </div>
       )}
 

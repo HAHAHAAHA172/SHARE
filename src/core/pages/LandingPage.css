@@ -1,0 +1,202 @@
+/* =====================================================
+   LandingPage.css — Splash screen, fully responsive
+   Phone | Tablet | Laptop | Desktop
+   ===================================================== */
+
+/* ── Root ── */
+.landing-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+  background: #6c63c9;
+}
+
+.landing-root:active {
+  cursor: grabbing;
+}
+
+/* ── Background ── */
+.landing-bg {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, #7c73d9 0%, #5a53b0 50%, #3d3878 100%);
+  transition: transform 0.05s linear;
+  z-index: 0;
+}
+
+/* ── Exit animation ── */
+.landing-exit {
+  animation: landingSlideUp 0.5s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+}
+
+@keyframes landingSlideUp {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(-100%); opacity: 0; }
+}
+
+/* ── Center content (logo + brand) ── */
+.landing-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 3vw, 24px);
+  transition: transform 0.05s linear, opacity 0.05s linear;
+}
+
+/* ── Logo wrap ── */
+.landing-logo-wrap {
+  width: clamp(80px, 22vw, 140px);
+  height: clamp(80px, 22vw, 140px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+  animation: logoPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes logoPop {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.landing-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* ── Brand text ── */
+.landing-brand {
+  font-size: clamp(32px, 10vw, 72px);
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: clamp(3px, 1.5vw, 10px);
+  margin: 0;
+  animation: brandFade 1s 0.3s ease both;
+}
+
+@keyframes brandFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── Swipe hint area ── */
+.landing-hint {
+  position: absolute;
+  bottom: clamp(28px, 6vh, 60px);
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.landing-hint.hint-visible {
+  opacity: 1;
+}
+
+/* Progress bar at bottom */
+.landing-hint-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 3px;
+  transition: width 0.05s linear;
+}
+
+/* Upward swipe hint */
+.landing-chevrons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.lc {
+  display: block;
+  width: clamp(18px, 5vw, 28px);
+  height: clamp(18px, 5vw, 28px);
+  color: #ffffff;
+  animation: swipeUp 1.4s ease-in-out infinite;
+}
+
+.lc1 { --chevron-opacity: 0.35; opacity: 0.35; }
+.lc2 { --chevron-opacity: 0.65; opacity: 0.65; animation-delay: 0.2s; }
+
+@keyframes swipeUp {
+  0% { transform: translateY(var(--chevron-travel, 8px)); opacity: 0; }
+  50% { opacity: var(--chevron-opacity); }
+  100% { transform: translateY(calc(-1 * var(--chevron-travel, 8px))); opacity: 0; }
+}
+
+.landing-hint-text {
+  font-size: clamp(12px, 3.5vw, 16px);
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+/* ── Responsive adjustments ── */
+
+/* Tablet (≥ 600px) */
+@media (min-width: 600px) {
+  .landing-logo-wrap {
+    width: 160px;
+    height: 160px;
+  }
+
+  .landing-brand {
+    font-size: 64px;
+  }
+
+  .landing-hint-text {
+    font-size: 15px;
+  }
+}
+
+/* Laptop / Desktop (≥ 1024px) */
+@media (min-width: 1024px) {
+  .landing-logo-wrap {
+    width: 180px;
+    height: 180px;
+  }
+
+  .landing-brand {
+    font-size: 80px;
+    letter-spacing: 14px;
+  }
+
+  /* On desktop, hint says "scroll up" instead */
+  .landing-hint-text::before {
+    content: 'Scroll or drag up to continue';
+  }
+
+  .landing-hint-text {
+    font-size: 0; /* hide original text */
+  }
+
+  .landing-hint-text::before {
+    font-size: 16px;
+  }
+}
+

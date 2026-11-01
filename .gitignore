@@ -1,4 +1,10 @@
 **/.env
-backend/.env
+*.local
+*.log
 node_modules/
 **/node_modules/
+.integration/
+**/dist/
+/data/
+/uploads/
+**/.npm-cache/

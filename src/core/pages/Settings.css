@@ -1,0 +1,273 @@
+/* =====================================================
+   Settings.css — Responsive: phone / tablet / laptop
+   ===================================================== */
+
+/* ── Root wrapper ── */
+.settings-screen {
+  min-height: 100dvh;
+  min-height: 100vh;
+  background: linear-gradient(175deg, #2a2644 0%, #1a1830 55%, #110f1e 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* ── Container ── */
+.settings-container {
+  width: 100%;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(18px, 4vw, 28px) clamp(16px, 5vw, 32px) 14px;
+  gap: 12px;
+}
+
+.settings-back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.settings-back-btn:hover,
+.settings-back-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.settings-title {
+  font-size: clamp(20px, 5.5vw, 26px);
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.settings-header-spacer {
+  width: 34px;
+  flex-shrink: 0;
+}
+
+/* ── Body ── */
+.settings-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 3.5vw, 22px);
+  padding: clamp(8px, 2vw, 16px) clamp(16px, 5vw, 32px) clamp(28px, 6vw, 48px);
+}
+
+/* ── Profile card ── */
+.settings-profile-card {
+  background: rgba(50, 46, 70, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: clamp(14px, 4vw, 20px);
+  padding: clamp(14px, 3.5vw, 20px) clamp(16px, 4vw, 22px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.settings-profile-card:hover,
+.settings-profile-card:focus-visible {
+  background: rgba(70, 64, 100, 0.85);
+}
+
+.settings-avatar {
+  width: clamp(44px, 12vw, 56px);
+  height: clamp(44px, 12vw, 56px);
+  border-radius: 50%;
+  background: rgba(80, 70, 120, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.settings-profile-name {
+  font-size: clamp(15px, 4vw, 18px);
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-profile-email {
+  font-size: clamp(12px, 3vw, 14px);
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Groups ── */
+.settings-group {
+  background: rgba(40, 38, 60, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: clamp(14px, 4vw, 20px);
+  overflow: hidden;
+}
+
+/* ── Row ── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: clamp(14px, 3.5vw, 18px) clamp(16px, 4vw, 22px);
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.18s;
+}
+
+.settings-row:hover,
+.settings-row:focus-visible {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-row-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.settings-row-left span {
+  font-size: clamp(14px, 3.8vw, 16px);
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* ── Divider ── */
+.settings-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 0 clamp(12px, 4vw, 22px);
+}
+
+/* ── Toggle switch ── */
+.settings-toggle {
+  position: relative;
+  width: 50px;
+  height: 28px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.25s;
+  padding: 0;
+}
+
+.toggle-off {
+  background: #555;
+}
+
+.toggle-on {
+  background: #6c63c9;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-off .toggle-thumb {
+  left: 3px;
+}
+
+.toggle-on .toggle-thumb {
+  left: 25px;
+}
+
+/* ── Log Out button ── */
+.settings-logout-btn {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(240, 240, 245, 0.92);
+  border: none;
+  border-radius: clamp(14px, 4vw, 50px);
+  padding: clamp(14px, 3.5vw, 18px) 24px;
+  cursor: pointer;
+  font-size: clamp(15px, 4vw, 17px);
+  font-weight: 700;
+  color: #e05252;
+  transition: background 0.2s, transform 0.15s;
+  width: 100%;
+}
+
+.settings-logout-btn:hover,
+.settings-logout-btn:focus-visible {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.settings-logout-btn:active {
+  transform: translateY(0);
+}
+
+/* ── Tablet (≥ 600px) ── */
+@media (min-width: 600px) {
+  .settings-container {
+    padding-top: 8px;
+  }
+}
+
+/* ── Laptop / Desktop (≥ 1024px) ── */
+@media (min-width: 1024px) {
+  .settings-screen {
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .settings-container {
+    max-width: 600px;
+    min-height: unset;
+    background: rgba(255, 255, 255, 0.035);
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+    padding-bottom: 40px;
+  }
+}
+

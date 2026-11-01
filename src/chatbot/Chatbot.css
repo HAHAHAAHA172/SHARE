@@ -1,0 +1,133 @@
+/* Message appearance animation */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pedro-chatbot .message-animate {
+  animation: slideUpFade 0.4s ease-out forwards;
+}
+
+/* Bouncing dots for the "typing" indicator */
+.pedro-chatbot .typing-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #c4c7c5;
+  border-radius: 50%;
+  margin: 0 3px;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.pedro-chatbot .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.pedro-chatbot .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0) scale(0.7); opacity: 0.5; }
+  40% { transform: translateY(-4px) scale(1); opacity: 1; }
+}
+
+@keyframes pedroThinkingPulse {
+  0%, 80%, 100% { opacity: 0.45; }
+  40% { opacity: 1; }
+}
+
+/* Smooth button hover effects */
+.pedro-chatbot .sidebar-btn {
+  transition: background-color 0.2s ease;
+}
+.pedro-chatbot .sidebar-btn:hover {
+  background-color: #2a2a2a !important;
+}
+
+.pedro-chatbot .send-btn {
+  transition: transform 0.1s ease;
+}
+.pedro-chatbot .send-btn:hover {
+  transform: scale(1.08);
+}
+.pedro-chatbot .send-btn:active {
+  transform: scale(0.95);
+}
+
+/* Popup menu smooth appearance animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pedro-chatbot .floating-chat-menu {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+.pedro-chatbot .menu-animate {
+  animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Subtle shadow on the sidebar for depth */
+.pedro-chatbot .app-sidebar {
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.4);
+}
+
+
+.pedro-chatbot { isolation: isolate; }
+.pedro-chatbot button, .pedro-chatbot textarea, .pedro-chatbot input, .pedro-chatbot select { font: inherit; }
+.pedro-chatbot button { color: inherit; }
+.pedro-chatbot button:focus-visible, .pedro-chatbot textarea:focus-visible, .pedro-chatbot [tabindex]:focus-visible { outline: 2px solid #c4a6f4; outline-offset: 3px; }
+.pedro-chatbot button:disabled { cursor: wait; opacity: .55; }
+.pedro-header { position: absolute; inset: 0 0 auto; min-height: 68px; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 20; background: #1d172bf2; border-bottom: 1px solid #ffffff10; box-sizing: border-box; }
+.pedro-back { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #9f7aca66; background: #44325f; border-radius: 12px; padding: 10px 12px; color: #fff; cursor: pointer; font-size: 13px; }
+.pedro-sidebar-backdrop { position: absolute; inset: 0; z-index: 40; border: 0; background: #0009; }
+.pedro-sidebar { transition: margin-left 0.3s cubic-bezier(0.16, 1, 0.3, 1), left 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.pedro-sidebar-edge { position: absolute; top: 50%; transform: translateY(-50%); z-index: 60; width: 44px; height: 72px; padding: 0; border: 0; background: transparent; color: #c4b6d4; display: flex; align-items: center; justify-content: flex-start; cursor: pointer; transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+/* Show only the outer half of the pill, with a larger transparent click target. */
+.pedro-sidebar-edge::before { content: ''; position: absolute; top: 0; bottom: 0; left: -16px; width: 32px; border: 1px solid #77618f; border-radius: 16px; background: #2d243f; clip-path: inset(0 0 0 50%); pointer-events: none; }
+.pedro-sidebar-edge > svg, .pedro-sidebar-grip { position: relative; pointer-events: none; }
+.pedro-sidebar-grip { display: flex; gap: 2px; margin-left: 3px; }
+.pedro-sidebar-grip span { width: 2px; height: 24px; border-radius: 2px; background: #c4b6d4; }
+.pedro-thinking { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 14px; }
+.pedro-thinking-dots { display: inline-flex; align-items: center; }
+.pedro-thinking-label { font-size: 13px; color: #c4b6d4; }
+.pedro-thinking-elapsed { font-size: 11px; color: #b4a1c9; }
+.pedro-input-action { width: 100%; border: 0; background: transparent; text-align: left; }
+.pedro-chat-menu-action { width: 100%; padding: 8px; border: 0; background: transparent; border-radius: 6px; text-align: left; font-size: 15px; cursor: pointer; }
+.pedro-chat-menu-action:hover { background: #2d243f; }
+.pedro-chatbot .pedro-delete-action { color: #ff4d4d; margin-top: 4px; }
+.pedro-rename-dialog { width: min(420px, calc(100vw - 40px)); max-height: calc(100dvh - 40px); margin: auto; padding: 24px; border: 1px solid #77618f; border-radius: 16px; background: #241c35; color: #fff; box-shadow: 0 12px 40px #0006; }
+.pedro-rename-dialog::backdrop { background: #000b; }
+.pedro-quiz-dialog { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; padding: 20px; background: transparent; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.pedro-quiz-dialog::backdrop { background: var(--pedro-quiz-backdrop); }
+.pedro-rename-dialog form { display: flex; flex-direction: column; gap: 14px; }
+.pedro-rename-dialog h2 { margin: 0 0 4px; font-size: 20px; }
+.pedro-rename-dialog label { font-size: 14px; color: #c4b6d4; }
+.pedro-rename-dialog input { min-width: 0; width: 100%; padding: 11px 12px; border: 1px solid #77618f; border-radius: 8px; background: #161222; color: #fff; }
+.pedro-rename-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.pedro-rename-actions button { padding: 10px 16px; border: 1px solid #77618f; border-radius: 8px; background: transparent; color: #fff; cursor: pointer; }
+.pedro-chatbot .pedro-rename-actions button[type="submit"] { border-color: #fff; background: #fff; color: #161222; }
+.pedro-chatbot .markdown-content { overflow-wrap: anywhere; }
+.pedro-chatbot .markdown-content p:first-child { margin-top: 0; }
+.pedro-chatbot .markdown-content p:last-child { margin-bottom: 0; }
+.pedro-chatbot .markdown-content pre, .pedro-chatbot .katex-display { max-width: 100%; overflow-x: auto; }
+.pedro-chatbot .markdown-content a { color: #d4b3ff; }
+.pedro-chatbot .markdown-content table { display: block; max-width: 100%; overflow-x: auto; }
+@media (max-width: 768px) {
+  .pedro-header { padding-inline: 14px; }
+  .pedro-chatbot .pedro-sidebar { box-shadow: 8px 0 32px #0006; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pedro-chatbot .message-animate, .pedro-chatbot .floating-chat-menu, .pedro-chatbot .menu-animate { animation: none; }
+  .pedro-sidebar, .pedro-sidebar-edge { transition-duration: 0.12s; }
+  .pedro-chatbot .typing-dot { animation-name: pedroThinkingPulse; }
+}

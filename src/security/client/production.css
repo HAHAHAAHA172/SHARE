@@ -1,0 +1,13 @@
+/* Bounds and touch behavior for production flows; retain existing page themes. */
+.app-status { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 12000; max-width: calc(100vw - 32px); margin: 0; padding: 12px 18px; border: 1px solid #9a89c6; border-radius: 12px; background: #241c35; color: #fff; box-shadow: 0 4px 16px #0004; overflow-wrap: anywhere; pointer-events: none; }
+.core-module :is(h1, h2, h3, p, .fav-item-text, .settings-profile-email) { overflow-wrap: anywhere; }
+.core-module :is(input, textarea, select), .pedro-quiz-dialog :is(input, textarea, select) { min-width: 0; max-width: 100%; }
+.pedro-quiz-dialog div { min-width: 0; }
+.pedro-quiz-dialog input[type="file"] { width: 100%; }
+.pedro-quiz-dialog :is(h2, h3, p, button) { overflow-wrap: anywhere; }
+.pedro-chatbot .markdown-content pre { white-space: pre-wrap; }
+@media (max-width: 768px) {
+  .core-module :is(input, textarea, select), .pedro-chatbot :is(input, textarea, select) { font-size: 16px !important; }
+  .core-module :is(.share-icon-btn, .share-close-btn, .share-popup-header button, .share-create-inline-btn, .share-view-all-btn, .createpost-action-btn), .pedro-chat-menu-action, .pedro-input-action { min-height: 44px; min-width: 44px; }
+  .core-module button, .pedro-chatbot button { touch-action: manipulation; }
+}

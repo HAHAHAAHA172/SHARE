@@ -77,8 +77,19 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     const row = check(await client.from('posts').select(columns).eq('id', id).eq('post_status', 'published').maybeSingle());
     const material = row?.materials?.[0];
     if (!material || !material.storage_path.startsWith(`${row.user_id}/${id}/`)) throw httpError(404, 'Attachment not found.');
-    const signed = check(await client.storage.from(storageBucket).createSignedUrl(material.storage_path, 60, { download: material.file_name }));
-    res.set('Cache-Control', 'no-store').redirect(302, signed.signedUrl);
+    const storage = client.storage.from(storageBucket);
+    if (typeof storage.download !== 'function') {
+      const signed = check(await storage.createSignedUrl(material.storage_path, 60, { download: material.file_name }));
+      return res.set('Cache-Control', 'no-store').redirect(302, signed.signedUrl);
+    }
+    const downloaded = check(await storage.download(material.storage_path));
+    const buffer = Buffer.from(await downloaded.arrayBuffer());
+    res.set({
+      'Cache-Control': 'private, no-store',
+      'Content-Type': material.mime_type || 'application/octet-stream',
+      'Content-Disposition': `inline; filename="${String(material.file_name).replace(/["\\\r\n]/g, '_')}"`,
+      'Content-Length': String(buffer.length),
+    }).send(buffer);
   });
 
   router.get('/:id', async (req, res) => {

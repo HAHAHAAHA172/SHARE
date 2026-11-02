@@ -371,7 +371,7 @@ export default function HomePage({
                       {item.file && (() => {
                         const fileUrl = apiUrl(item.file.url);
                         const type = item.file.mimetype || '';
-                        if (type.startsWith('image/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><img className="share-feed-media" src={fileUrl} alt={item.file.originalname || 'Post attachment'} /></button>;
+                        if (type.startsWith('image/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><img className="share-feed-media" src={fileUrl} alt={item.file.originalname || 'Post attachment'} onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement.classList.add('is-media-error'); }} /><span className="share-media-fallback">Preview unavailable — open the attachment</span></button>;
                         if (type.startsWith('video/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><video className="share-feed-media" src={fileUrl} preload="metadata" muted /></button>;
                         return <button type="button" className="share-feed-file-preview" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfIcon size={28} /><span>{item.file.originalname || 'Open attachment'}</span></button>;
                       })()}

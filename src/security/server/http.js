@@ -4,7 +4,7 @@ import { rateLimit } from 'express-rate-limit';
 import { httpError } from './validation.js';
 
 export function securityHeaders({ production = false, supabaseUrl } = {}) {
-  const connectSrc = ["'self'"];
+  const connectSrc = ["'self'", 'blob:'];
   if (supabaseUrl) {
     const origin = new URL(supabaseUrl).origin;
     connectSrc.push(origin, origin.replace(/^https:/, 'wss:'));

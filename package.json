@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.19.0",
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/supabase-js": "2.118.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -31,6 +32,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
+    "react-pdf": "^11.0.0",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0"
   },

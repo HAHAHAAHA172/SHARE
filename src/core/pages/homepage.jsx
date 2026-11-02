@@ -4,6 +4,9 @@ import botLogo from '../assets/share_logo1.png';
 import { apiFetch, apiUrl } from '../../shared/api.js';
 import { supabase } from '../../security/client/auth.js';
 import PostActions from '../components/PostActions.jsx';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
 import { Search, Menu, Home, Sparkles, Bell, User, Plus, X, FileText, BookOpen, CheckCircle, Clock, Settings, Star } from 'lucide-react';
 
 // Custom exact PDF document icon matching the screenshot
@@ -31,6 +34,17 @@ function PdfIcon({ size = 30 }) {
 }
 
 const inlineImageCache = new Map();
+pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+
+function PdfPreview({ src, large = false }) {
+  const [pages, setPages] = useState(null);
+  const [failed, setFailed] = useState(false);
+  if (failed) return <div className="share-document-preview"><FileText size={48} /><span>PDF preview unavailable</span><a href={src} target="_blank" rel="noopener noreferrer">Open PDF in a new tab</a></div>;
+  return <Document file={src} loading={<span className="share-media-loading">Loading PDF preview…</span>} onLoadSuccess={({ numPages }) => setPages(numPages)} onLoadError={() => setFailed(true)}>
+    <Page pageNumber={1} width={large ? 760 : 420} renderTextLayer={false} renderAnnotationLayer={false} />
+    {large && pages > 1 && <p className="share-pdf-page-count">Page 1 of {pages}</p>}
+  </Document>;
+}
 
 function InlineImage({ src, alt, onError }) {
   const [resolved, setResolved] = useState('');
@@ -391,6 +405,7 @@ export default function HomePage({
                         const type = item.file.mimetype || '';
                         if (type.startsWith('image/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><InlineImage src={fileUrl} alt={item.file.originalname || 'Post attachment'} onError={() => {}} /><span className="share-media-fallback">Preview unavailable — open the attachment</span></button>;
                         if (type.startsWith('video/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><video className="share-feed-media" src={fileUrl} preload="metadata" muted /></button>;
+                        if (type === 'application/pdf') return <button type="button" className="share-feed-file-preview share-pdf-card" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfPreview src={fileUrl} /><span>{item.file.originalname || 'Open PDF'}</span></button>;
                         return <button type="button" className="share-feed-file-preview" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfIcon size={28} /><span>{item.file.originalname || 'Open attachment'}</span></button>;
                       })()}
                       <div className="share-card-meta">
@@ -675,7 +690,7 @@ export default function HomePage({
           <div className="share-file-preview-backdrop" role="dialog" aria-modal="true" aria-label="Attachment preview" onClick={() => setPreviewFile(null)}>
             <div className="share-file-preview-modal" onClick={(event) => event.stopPropagation()}>
               <button type="button" className="share-close-btn" aria-label="Close preview" onClick={() => setPreviewFile(null)}><X size={20} /></button>
-              {previewFile.mimetype?.startsWith('image/') ? <img src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : <div className="share-document-preview"><FileText size={48} /><h3>{previewFile.originalname || 'Document'}</h3><a href={previewFile.url} target="_blank" rel="noopener noreferrer" download={previewFile.originalname}>Open document in a new tab</a></div>}
+              {previewFile.mimetype?.startsWith('image/') ? <img src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : previewFile.mimetype === 'application/pdf' ? <PdfPreview src={previewFile.url} large /> : <div className="share-document-preview"><FileText size={48} /><h3>{previewFile.originalname || 'Document'}</h3><a href={previewFile.url} target="_blank" rel="noopener noreferrer" download={previewFile.originalname}>Open document in a new tab</a></div>}
             </div>
           </div>
         )}

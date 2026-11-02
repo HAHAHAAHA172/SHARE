@@ -29,20 +29,27 @@ function PdfIcon({ size = 30 }) {
   );
 }
 
+const inlineImageCache = new Map();
+
 function InlineImage({ src, alt, onError }) {
   const [resolved, setResolved] = useState('');
   useEffect(() => {
     let active = true;
-    let objectUrl = '';
-    apiFetch(src).then(response => {
+    const cached = inlineImageCache.get(src);
+    const request = cached || apiFetch(src).then(response => {
       if (!response.ok) throw new Error('Preview unavailable');
       return response.blob();
     }).then(blob => {
+      const url = URL.createObjectURL(blob);
+      inlineImageCache.set(src, url);
+      return url;
+    });
+    if (!cached) inlineImageCache.set(src, request);
+    Promise.resolve(request).then(url => {
       if (!active) return;
-      objectUrl = URL.createObjectURL(blob);
-      setResolved(objectUrl);
+      setResolved(url);
     }).catch(() => { if (active) onError?.(); });
-    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    return () => { active = false; };
   }, [src, onError]);
   if (!resolved) return <span className="share-media-loading">Loading preview…</span>;
   return <img className="share-feed-media" src={resolved} alt={alt} />;
@@ -199,7 +206,7 @@ export default function HomePage({
 
   return (
     <div className="share-app-viewport">
-      <div className="share-frame-container frame-auto">
+      <div className={`share-frame-container frame-auto ${headerCollapsed ? 'header-is-collapsed' : ''}`}>
 
         {/* ================= TOP PURPLE HEADER ================= */}
         <header className={`share-purple-header ${headerCollapsed ? 'is-collapsed' : ''}`}>

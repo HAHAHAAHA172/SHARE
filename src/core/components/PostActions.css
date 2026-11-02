@@ -6,6 +6,8 @@
 .post-social-actions svg { flex-shrink: 0; }
 .post-social-actions .post-heart.is-liked { color: #e52e57; }
 .post-social-actions button:disabled { opacity: .65; cursor: wait; }
+.post-social-actions button .post-action-label { display: none; }
+.post-social-actions button .post-count { display: inline; font-size: 12px; }
 .post-social-error { margin: 7px 0 0; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .share-post-card { display: block; cursor: default; }
 .share-card-open { display: flex; align-items: center; width: 100%; border: 0; padding: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; min-height: 44px; }
@@ -19,6 +21,5 @@
 .comment-status { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 @media (max-width: 360px) { .post-social-actions button { font-size: 11px; gap: 4px; } }
 @media (max-width: 600px) {
-  .post-social-actions button span { display: none; }
   .post-social-actions button { min-height: 34px; }
 }

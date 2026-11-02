@@ -40,10 +40,10 @@ export default function PostActions({ post, currentUser, onComment, onPedro, onS
   return <div className="post-social" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
     <div className="post-social-actions">
       <button type="button" aria-label={actions.liked ? 'Unlike post' : 'Like post'} aria-pressed={actions.liked} className={actions.liked ? 'post-heart is-liked' : 'post-heart'} disabled={pending} onClick={toggleLike}>
-        <Heart size={19} fill={actions.liked ? 'currentColor' : 'none'} /><span>{actions.likes}</span>
+        <Heart size={19} fill={actions.liked ? 'currentColor' : 'none'} /><span className="post-count">{actions.likes}</span>
       </button>
-      <button type="button" onClick={onComment}><MessageCircle size={18} /><span>Comment{actions.commentCount ? ` (${actions.commentCount})` : ''}</span></button>
-      <button type="button" onClick={() => onPedro?.(post)} aria-label="Ask P.E.D.R.O. about this post"><Sparkles size={18} /><span>Ask P.E.D.R.O.</span></button>
+      <button type="button" onClick={onComment}><MessageCircle size={18} /><span className="post-action-label">Comment</span><span className="post-count">{actions.commentCount}</span></button>
+      <button type="button" onClick={() => onPedro?.(post)} aria-label="Ask P.E.D.R.O. about this post"><Sparkles size={18} /><span className="post-action-label">Ask P.E.D.R.O.</span></button>
     </div>
     {error && <p className="post-social-error" role="alert">{error}</p>}
   </div>;

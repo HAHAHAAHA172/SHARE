@@ -19,6 +19,7 @@ export function readServerConfig(env = process.env) {
   }
   return {
     production, supabaseUrl, publishableKey, allowedOrigins,
+    storageBucket: env.SUPABASE_STORAGE_BUCKET || 'post-files',
     port: integer(env.PORT, 3001, 1, 65535, 'PORT'),
     trustProxy: integer(env.TRUST_PROXY_HOPS, 0, 0, 3, 'TRUST_PROXY_HOPS'),
     dataDir: env.DATA_DIR || undefined, uploadsDir: env.UPLOADS_DIR || undefined,
@@ -31,5 +32,18 @@ export function authClientFactory({ supabaseUrl, publishableKey }) {
   return () => createClient(supabaseUrl, publishableKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     global: { fetch: (url, options = {}) => fetch(url, { ...options, signal: AbortSignal.timeout(10_000) }) },
+  });
+}
+
+// New client per request: a user's access token must never bleed into another
+// request, and RLS remains active because this uses the publishable key.
+export function dataClientFactory({ supabaseUrl, publishableKey }) {
+  if (!supabaseUrl || !publishableKey) return undefined;
+  return token => createClient(supabaseUrl, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: {
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+      fetch: (url, options = {}) => fetch(url, { ...options, signal: AbortSignal.timeout(20_000) }),
+    },
   });
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiUrl } from '../../shared/api.js';
+import { apiFetch } from '../../shared/api.js';
 import PostDetail from './PostDetail.jsx';
 
 // Cached feed/favorite records open immediately; direct links reload by ID.
@@ -12,7 +12,7 @@ export default function ResourceDetailPage({ postId, initialPost = null, onNavig
     const controller = new AbortController();
     async function loadResource() {
       try {
-        const response = await fetch(apiUrl(`/api/posts/${encodeURIComponent(postId)}`), { signal: controller.signal });
+        const response = await apiFetch(`/api/posts/${encodeURIComponent(postId)}`, { signal: controller.signal });
         if (response.status === 404) {
           if (!controller.signal.aborted) setResource({ post: null, status: 'not-found', error: 'This resource may have been removed.' });
           return;

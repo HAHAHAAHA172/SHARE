@@ -22,7 +22,7 @@ Open the Local URL printed by Vite (normally `http://localhost:5173`). Stop both
 
 To start only the frontend, run `npm.cmd run dev:client`. To start only the API in watch mode, run `npm.cmd run dev:server`. `npm.cmd start` starts the API without watch mode.
 
-The landing page supports a Continue button and an upward swipe. Use the home feed to publish/search resources, open details, save favorites, or launch P.E.D.R.O. Login and signup are local demo profile screens; they do not authenticate users or store passwords. You can browse directly through `http://localhost:5173/#/home`.
+The landing page supports a Continue button and an upward swipe. Use the home feed to publish/search resources, open details, save favorites, or launch P.E.D.R.O. Login and signup use Supabase email/password authentication; no passwords are stored by this application. You can browse directly through `http://localhost:5173/#/home`.
 
 Resource links use `#/post-detail/<resource-id>`, so refreshes, direct links, and browser history resolve the matching resource. A missing resource shows a recovery link; temporary loading failures offer a retry.
 
@@ -59,12 +59,12 @@ data/                 Persistent resource data (created/used at runtime)
 uploads/              Uploaded files (created/used at runtime)
 ```
 
-Security features remain a future module; no authentication implementation is included in this integration.
+Security controls live under `src/security/`. The server verifies Supabase access tokens, validates and bounds request data, limits API and AI usage, restricts uploads, applies security headers/CORS, and returns safe errors. See [`src/security/README.md`](src/security/README.md) for deployment checks and known limitations.
 
 ## Data and current behavior
 
 - Posts persist in `data/posts.json`; attachments are stored in `uploads/`. Both are local runtime data and ignored by Git. Back these directories up if retaining posted resources.
-- Favorites are saved in this browser's local storage. The optional Remember me choice retains only the demo profile on this device.
+- Favorites are saved in this browser's local storage and namespaced by the verified Supabase user ID. The optional Remember me choice controls the local auth session only.
 - Comments are explicitly local to the open detail view and are not saved to the server yet.
 - Chat/quiz state stays in memory while moving between the feed and P.E.D.R.O. A page reload resets it. Quiz timers pause while P.E.D.R.O is hidden.
 - Opening a resource in P.E.D.R.O prefills its title/description. Its file is not automatically sent to AI; attach it manually to analyze its contents.
@@ -80,6 +80,6 @@ npm.cmd run lint
 
 The build runs Vite and writes production assets to root `dist/`. Tests cover resource persistence/filtering/download/deletion, missing-key behavior, chat and quiz route compatibility with a stub provider, and fragmented streamed response handling. They do not call a live AI provider. Lint runs ESLint across the project.
 
-Production builds are generated in `dist`. Serve that directory through a host that forwards `/api` and `/uploads` to the backend, or configure `VITE_API_BASE_URL` before building. This integration does not deploy the app.
+Production builds are generated in `dist`. Set `NODE_ENV=production`, configure exact HTTPS `APP_ORIGINS`, persistent `DATA_DIR`/`UPLOADS_DIR`, and a trusted `TRUST_PROXY_HOPS` value. Serve the built directory through the backend or a host that forwards `/api` and `/uploads`; configure `VITE_API_BASE_URL` before building when the API is on another origin. This integration does not deploy the app.
 
 The supplied ZIP's extracted source and the original chatbot snapshots remain under the ignored `.integration/` folder. The previous package folders and configuration files are preserved in `.integration/legacy-packages/`.

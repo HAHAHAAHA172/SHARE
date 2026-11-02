@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './homepage.css';
 import botLogo from '../assets/share_logo1.png';
-import { API_BASE_URL } from '../../shared/api.js';
+import { apiFetch } from '../../shared/api.js';
 import { Search, Menu, Home, Sparkles, Bell, User, ChevronRight, Plus, X, FileText, BookOpen, CheckCircle, Clock, Settings, Star } from 'lucide-react';
 
 // Custom exact PDF document icon matching the screenshot
@@ -68,7 +68,7 @@ export default function HomePage({
       try {
         setLoading(true);
         setLoadError('');
-        const res = await fetch(`${API_BASE_URL}/api/posts`, { signal: controller.signal });
+        const res = await apiFetch('/api/posts', { signal: controller.signal });
         if (!res.ok) throw new Error('Could not load posts. Please try again.');
         if (res.ok) {
           const data = await res.json();

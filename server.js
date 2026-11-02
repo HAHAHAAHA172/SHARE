@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
 import { createApp } from './server/app.js';
-import { readServerConfig, authClientFactory } from './src/security/server/config.js';
+import { readServerConfig, authClientFactory, dataClientFactory } from './src/security/server/config.js';
 
 dotenv.config({ path: fileURLToPath(new URL('.env', import.meta.url)), quiet: true });
 const config = readServerConfig();
@@ -16,7 +16,7 @@ const verifyAccessToken = async token => {
 const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI;
 const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 const port = config.port;
-const server = createApp({ ...config, ai, verifyAccessToken, createAuthClient }).listen(port, '0.0.0.0', () => {
+const server = createApp({ ...config, ai, verifyAccessToken, createAuthClient, createDataClient: dataClientFactory(config) }).listen(port, '0.0.0.0', () => {
   console.log(`S.H.A.R.E API ready on http://localhost:${port}`);
   if (!ai) console.log('Core resources are available. Set GEMINI_API_KEY in .env to enable P.E.D.R.O.');
 });

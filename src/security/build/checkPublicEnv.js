@@ -1,4 +1,6 @@
-const publicNames = new Set(['VITE_API_BASE_URL', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY']);
+// VITE_USER_NODE_ENV is injected by some local IDE/dev-host environments and
+// is not a credential. Keep the allow-list explicit for every other VITE_* key.
+const publicNames = new Set(['VITE_API_BASE_URL', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY', 'VITE_USER_NODE_ENV']);
 
 export function checkPublicEnv(env) {
   for (const [name, value] of Object.entries(env)) {

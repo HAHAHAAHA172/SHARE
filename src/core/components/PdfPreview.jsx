@@ -29,7 +29,7 @@ export default function PdfPreview({ src, large = false }) {
   }, [src]);
   if (failed) return <div className="share-document-preview"><FileText size={48} /><span>PDF preview unavailable</span><a href={src} target="_blank" rel="noopener noreferrer">Open PDF in a new tab</a></div>;
   if (!resolved) return <span className="share-media-loading">Loading PDF preview...</span>;
-  return <div className="share-pdf-viewer">
+  return <div className={`share-pdf-viewer ${large ? 'is-large' : 'is-card'}`}>
     <div className="share-pdf-toolbar"><a href={resolved} download="document.pdf">Download PDF</a></div>
     <Document file={resolved} loading={<span className="share-media-loading">Loading PDF preview...</span>} onLoadSuccess={({ numPages }) => setPages(numPages)} onLoadError={() => setFailed(true)}>
       {Array.from({ length: large ? (pages || 1) : 1 }, (_, index) => (

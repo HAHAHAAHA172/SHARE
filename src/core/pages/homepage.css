@@ -1093,6 +1093,7 @@
 .share-document-preview a { color: #e3d6ff; text-decoration: underline; }
 .share-pdf-viewer { height: 100%; overflow: auto; padding: 0 34px 72px 0; scrollbar-color: #a995d8 rgb(255 255 255 / 10%); scrollbar-width: thin; }
 .share-pdf-toolbar { position: absolute; top: 58px; right: 28px; z-index: 3; display: flex; justify-content: flex-end; }
+.share-pdf-viewer.is-card .share-pdf-toolbar { display: none; }
 .share-pdf-toolbar a { color: #211a31; background: #e9ddff; border-radius: 999px; padding: 9px 16px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 12px rgb(0 0 0 / 24%); }
 .share-pdf-page { display: grid; justify-items: center; gap: 4px; margin-bottom: 18px; }
 .share-pdf-card { display: flex; flex-direction: column; align-items: center; gap: 8px; overflow: hidden; }

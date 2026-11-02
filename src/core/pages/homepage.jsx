@@ -202,7 +202,7 @@ export default function HomePage({
       <div className="share-frame-container frame-auto">
 
         {/* ================= TOP PURPLE HEADER ================= */}
-        <header className="share-purple-header">
+        <header className={`share-purple-header ${headerCollapsed ? 'is-collapsed' : ''}`}>
           {/* Top Row: Notifications, Brand/Title (on desktop), and Profile */}
           <div className="share-top-row">
             <div className="share-notifications-anchor" ref={notificationsAnchorRef}>
@@ -303,8 +303,6 @@ export default function HomePage({
             )}
           </div>
 
-          {/* Bottom Pull Handle pill */}
-          <div className="share-header-handle-bar"></div>
         </header>
 
         <div className={`share-compact-header ${headerCollapsed ? 'is-visible' : ''}`} aria-hidden={!headerCollapsed}>

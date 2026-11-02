@@ -1061,19 +1061,25 @@
   }
 }
 
-/* Social-feed presentation: one readable post per vertical column. */
-.share-posts-grid { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.share-post-card { width: min(100%, 680px); display: block; padding: 18px 18px 12px; text-align: left; }
+/* Social-feed presentation: only the feed row scrolls horizontally. */
+.share-posts-grid { display: flex; flex-direction: row; align-items: stretch; gap: 18px; overflow-x: auto; overflow-y: hidden; padding: 4px 4px 18px; scroll-snap-type: x mandatory; scroll-behavior: smooth; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.share-post-card { flex: 0 0 min(76vw, 560px); width: min(76vw, 560px); display: flex; flex-direction: column; padding: 16px; text-align: left; scroll-snap-align: start; color: #292334; background: #fffaf7; }
 .share-card-content { min-width: 0; }
-.share-feed-author-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #f2efff; }
-.share-feed-author-row span { color: #aaa7b8; font-size: 12px; }
+.share-feed-author-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #292334; }
+.share-feed-author-row span { color: #6f6878; font-size: 12px; }
 .share-feed-avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #9a89c6; color: #17131f; }
 .share-card-title { margin-bottom: 8px; }
+.share-card-desc { color: #4f4859; }
 .share-feed-media-button, .share-feed-file-preview { width: 100%; border: 0; padding: 0; margin: 12px 0; background: #111016; color: #f8f7ff; cursor: pointer; }
-.share-feed-media { display: block; width: 100%; max-height: 560px; object-fit: contain; background: #111016; }
+.share-feed-media-button { aspect-ratio: 4 / 3; overflow: hidden; }
+.share-feed-media { display: block; width: 100%; height: 100%; object-fit: cover; background: #111016; }
 .share-feed-file-preview { display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 10px; text-align: left; }
 .share-file-preview-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgb(5 3 12 / 82%); }
 .share-file-preview-modal { position: relative; width: min(100%, 900px); height: min(90vh, 760px); display: grid; place-items: center; padding: 42px 16px 16px; border-radius: 16px; background: #211a31; }
 .share-file-preview-modal > img, .share-file-preview-modal > video { max-width: 100%; max-height: 100%; object-fit: contain; }
 .share-file-preview-modal > iframe { width: 100%; height: 100%; border: 0; background: white; }
 .share-file-preview-modal .share-close-btn { position: absolute; top: 10px; right: 10px; }
+
+@media (max-width: 700px) {
+  .share-post-card { flex-basis: min(86vw, 460px); width: min(86vw, 460px); }
+}

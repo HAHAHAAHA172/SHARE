@@ -343,15 +343,6 @@ export default function HomePage({
 
             <div className="share-posts-header-actions">
               <button
-                className="share-create-inline-btn"
-                onClick={handleCreateClick}
-                title="Create a new post"
-              >
-                <Plus size={16} />
-                <span>Create Post</span>
-              </button>
-
-              <button
                 className="share-view-all-btn"
                 onClick={() => setShowViewAllModal(true)}
               >
@@ -440,15 +431,6 @@ export default function HomePage({
             )}
           </div>
 
-          {/* Floating Action Button (Phone & Tablet) */}
-          <button
-            className="share-fab-btn"
-            onClick={handleCreateClick}
-            title="Create a new post"
-            aria-label="Create Post"
-          >
-            <Plus size={26} color="#FFFFFF" strokeWidth={2.5} />
-          </button>
         </main>
 
         {/* ================= BOTTOM NAVIGATION BAR ================= */}
@@ -693,7 +675,7 @@ export default function HomePage({
           <div className="share-file-preview-backdrop" role="dialog" aria-modal="true" aria-label="Attachment preview" onClick={() => setPreviewFile(null)}>
             <div className="share-file-preview-modal" onClick={(event) => event.stopPropagation()}>
               <button type="button" className="share-close-btn" aria-label="Close preview" onClick={() => setPreviewFile(null)}><X size={20} /></button>
-              {previewFile.mimetype?.startsWith('image/') ? <img src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : <iframe src={previewFile.url} title={previewFile.originalname || 'Document preview'} />}
+              {previewFile.mimetype?.startsWith('image/') ? <img src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : <div className="share-document-preview"><FileText size={48} /><h3>{previewFile.originalname || 'Document'}</h3><a href={previewFile.url} target="_blank" rel="noopener noreferrer" download={previewFile.originalname}>Open document in a new tab</a></div>}
             </div>
           </div>
         )}

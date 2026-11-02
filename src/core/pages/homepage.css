@@ -1093,6 +1093,7 @@
 .share-pdf-viewer { display: grid; justify-items: center; gap: 10px; }
 .share-pdf-toolbar { width: 100%; display: flex; justify-content: flex-end; }
 .share-pdf-toolbar a { color: #e3d6ff; text-decoration: underline; }
+.share-pdf-page { display: grid; justify-items: center; gap: 4px; margin-bottom: 18px; }
 .share-pdf-card { display: flex; flex-direction: column; align-items: center; gap: 8px; overflow: hidden; }
 .share-pdf-card .react-pdf__Document { width: 100%; display: flex; justify-content: center; background: #f7f7f7; }
 .share-pdf-card .react-pdf__Page { max-width: 100%; }

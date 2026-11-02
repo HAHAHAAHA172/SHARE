@@ -32,8 +32,12 @@ export default function PdfPreview({ src, large = false }) {
   return <div className="share-pdf-viewer">
     <div className="share-pdf-toolbar"><a href={resolved} download="document.pdf">Download PDF</a></div>
     <Document file={resolved} loading={<span className="share-media-loading">Loading PDF preview...</span>} onLoadSuccess={({ numPages }) => setPages(numPages)} onLoadError={() => setFailed(true)}>
-      <Page pageNumber={1} width={large ? 760 : 420} renderTextLayer={false} renderAnnotationLayer={false} />
-      {large && pages > 1 && <p className="share-pdf-page-count">Page 1 of {pages}</p>}
+      {Array.from({ length: pages || 1 }, (_, index) => (
+        <div className="share-pdf-page" key={index}>
+          <Page pageNumber={index + 1} width={large ? 760 : 420} renderTextLayer={false} renderAnnotationLayer={false} />
+          {large && pages > 1 && <p className="share-pdf-page-count">Page {index + 1} of {pages}</p>}
+        </div>
+      ))}
     </Document>
   </div>;
 }

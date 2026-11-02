@@ -19,7 +19,6 @@
 .comment-status { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
 @media (max-width: 360px) { .post-social-actions button { font-size: 11px; gap: 4px; } }
 @media (max-width: 600px) {
-  .post-social-actions button:nth-child(2) span,
-  .post-social-actions button:nth-child(3) span { display: none; }
+  .post-social-actions button span { display: none; }
   .post-social-actions button { min-height: 34px; }
 }

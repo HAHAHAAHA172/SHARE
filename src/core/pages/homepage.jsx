@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import './homepage.css';
 import botLogo from '../assets/share_logo1.png';
-import { apiFetch } from '../../shared/api.js';
+import { apiFetch, apiUrl } from '../../shared/api.js';
 import PostActions from '../components/PostActions.jsx';
-import { Search, Menu, Home, Sparkles, Bell, User, ChevronRight, Plus, X, FileText, BookOpen, CheckCircle, Clock, Settings, Star } from 'lucide-react';
+import { Search, Menu, Home, Sparkles, Bell, User, Plus, X, FileText, BookOpen, CheckCircle, Clock, Settings, Star } from 'lucide-react';
 
 // Custom exact PDF document icon matching the screenshot
 function PdfIcon({ size = 30 }) {
@@ -49,6 +49,7 @@ export default function HomePage({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showViewAllModal, setShowViewAllModal] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
   const notificationsAnchorRef = useRef(null);
   const notificationsButtonRef = useRef(null);
   const notificationsPanelRef = useRef(null);
@@ -333,22 +334,28 @@ export default function HomePage({
                 {filteredPosts.map((item) => (
                   <article key={item.id} className="share-post-card">
                     <button type="button" className="share-card-open" onClick={() => handlePostClick(item)} aria-label={`Open post: ${item.title}`}>
-                    <div className="share-card-left-icon">
-                      <PdfIcon size={32} />
-                    </div>
-
                     <div className="share-card-content">
+                      <div className="share-feed-author-row">
+                        <div className="share-feed-avatar"><User size={18} /></div>
+                        <strong>{item.author || 'Student'}</strong>
+                        <span>{item.createdAt ? new Date(item.createdAt).toLocaleString() : 'Recently'}</span>
+                      </div>
                       <h3 className="share-card-title">{item.title}</h3>
                       <p className="share-card-desc">{item.description || 'Open this shared resource.'}</p>
+                      {item.file && (() => {
+                        const fileUrl = apiUrl(item.file.url);
+                        const type = item.file.mimetype || '';
+                        if (type.startsWith('image/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><img className="share-feed-media" src={fileUrl} alt={item.file.originalname || 'Post attachment'} /></button>;
+                        if (type.startsWith('video/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><video className="share-feed-media" src={fileUrl} preload="metadata" muted /></button>;
+                        return <button type="button" className="share-feed-file-preview" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfIcon size={28} /><span>{item.file.originalname || 'Open attachment'}</span></button>;
+                      })()}
                       <div className="share-card-meta">
                         {item.subject && <span className="share-card-tag">{item.subject}</span>}
                         <span className="share-card-author">by {item.author || 'Student'}</span>
                       </div>
                     </div>
 
-                    <div className="share-card-arrow">
-                      <ChevronRight size={20} color="#1c1c1c" strokeWidth={2.2} />
-                    </div>
+                    <PostActions post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} onPedro={() => onNavigateToPedro?.(item)} onSignIn={() => onNavigate?.('login')} />
                     </button>
                     <PostActions key={`${item.id}:${currentUser?.id || 'guest'}`} post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} onPedro={onNavigateToPedro} onSignIn={() => onNavigate?.('login')} />
                   </article>
@@ -626,6 +633,15 @@ export default function HomePage({
                 <p>Student Hub for Academic Resources & Exchange</p>
                 <small>Version 2.0 (Multi-Screen Responsive)</small>
               </div>
+            </div>
+          </div>
+        )}
+
+        {previewFile && (
+          <div className="share-file-preview-backdrop" role="dialog" aria-modal="true" aria-label="Attachment preview" onClick={() => setPreviewFile(null)}>
+            <div className="share-file-preview-modal" onClick={(event) => event.stopPropagation()}>
+              <button type="button" className="share-close-btn" aria-label="Close preview" onClick={() => setPreviewFile(null)}><X size={20} /></button>
+              {previewFile.mimetype?.startsWith('image/') ? <img src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : <iframe src={previewFile.url} title={previewFile.originalname || 'Document preview'} />}
             </div>
           </div>
         )}

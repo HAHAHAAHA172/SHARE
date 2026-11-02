@@ -1075,6 +1075,7 @@
 .share-feed-media { display: block; width: 100%; height: 100%; object-fit: cover; background: #111016; }
 .share-media-fallback { display: none; min-height: 180px; place-items: center; padding: 24px; color: #e9e3f4; background: #292233; }
 .share-feed-media-button.is-media-error .share-media-fallback { display: grid; }
+.share-media-loading { display: grid; min-height: 220px; place-items: center; color: #e9e3f4; background: #292233; }
 .share-feed-file-preview { display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 10px; text-align: left; }
 .share-file-preview-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgb(5 3 12 / 82%); }
 .share-file-preview-modal { position: relative; width: min(100%, 900px); height: min(90vh, 760px); display: grid; place-items: center; padding: 42px 16px 16px; border-radius: 16px; background: #211a31; }

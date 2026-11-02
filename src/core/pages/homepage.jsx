@@ -29,6 +29,25 @@ function PdfIcon({ size = 30 }) {
   );
 }
 
+function InlineImage({ src, alt, onError }) {
+  const [resolved, setResolved] = useState('');
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    apiFetch(src).then(response => {
+      if (!response.ok) throw new Error('Preview unavailable');
+      return response.blob();
+    }).then(blob => {
+      if (!active) return;
+      objectUrl = URL.createObjectURL(blob);
+      setResolved(objectUrl);
+    }).catch(() => { if (active) onError?.(); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [src, onError]);
+  if (!resolved) return <span className="share-media-loading">Loading preview…</span>;
+  return <img className="share-feed-media" src={resolved} alt={alt} />;
+}
+
 export default function HomePage({
   onNavigateToPedro,
   onNavigate,
@@ -52,6 +71,7 @@ export default function HomePage({
   const [previewFile, setPreviewFile] = useState(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const lastScrollYRef = useRef(0);
+  const postsScrollRef = useRef(null);
   const notificationsAnchorRef = useRef(null);
   const notificationsButtonRef = useRef(null);
   const notificationsPanelRef = useRef(null);
@@ -79,8 +99,10 @@ export default function HomePage({
         ticking = false;
       });
     };
+    const scrollTarget = postsScrollRef.current;
+    scrollTarget?.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => { scrollTarget?.removeEventListener('scroll', onScroll); window.removeEventListener('scroll', onScroll); };
   }, []);
 
   // Fetch posts on mount
@@ -347,7 +369,7 @@ export default function HomePage({
           </div>
 
           {/* Posts Scroll Feed or Empty State */}
-          <div className="share-posts-scroll-list">
+          <div className="share-posts-scroll-list" ref={postsScrollRef}>
             {loadError && <div className="core-message" role="alert"><p>{loadError}</p><button type="button" onClick={() => setRetry(value => value + 1)}>Retry</button></div>}
             {loading ? (
               <div className="share-loading-state">
@@ -371,7 +393,7 @@ export default function HomePage({
                       {item.file && (() => {
                         const fileUrl = apiUrl(item.file.url);
                         const type = item.file.mimetype || '';
-                        if (type.startsWith('image/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><img className="share-feed-media" src={fileUrl} alt={item.file.originalname || 'Post attachment'} onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement.classList.add('is-media-error'); }} /><span className="share-media-fallback">Preview unavailable — open the attachment</span></button>;
+                        if (type.startsWith('image/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><InlineImage src={fileUrl} alt={item.file.originalname || 'Post attachment'} onError={() => {}} /><span className="share-media-fallback">Preview unavailable — open the attachment</span></button>;
                         if (type.startsWith('video/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><video className="share-feed-media" src={fileUrl} preload="metadata" muted /></button>;
                         return <button type="button" className="share-feed-file-preview" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfIcon size={28} /><span>{item.file.originalname || 'Open attachment'}</span></button>;
                       })()}

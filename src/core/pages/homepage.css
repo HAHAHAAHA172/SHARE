@@ -1085,11 +1085,14 @@
 .share-media-loading { display: grid; min-height: 220px; place-items: center; color: #e9e3f4; background: #292233; }
 .share-feed-file-preview { display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 10px; text-align: left; }
 .share-file-preview-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgb(5 3 12 / 82%); }
-.share-file-preview-modal { position: relative; width: min(100%, 900px); height: min(90vh, 760px); display: grid; place-items: center; padding: 42px 16px 16px; border-radius: 16px; background: #211a31; }
+.share-file-preview-modal { position: relative; width: min(100%, 900px); height: min(90vh, 760px); display: block; overflow: auto; padding: 42px 16px 16px; border-radius: 16px; background: #211a31; }
 .share-file-preview-modal > img, .share-file-preview-modal > video { max-width: 100%; max-height: 100%; object-fit: contain; }
 .share-file-preview-modal > iframe { width: 100%; height: 100%; border: 0; background: white; }
 .share-document-preview { display: grid; place-items: center; gap: 12px; color: #f8f7ff; text-align: center; }
 .share-document-preview a { color: #e3d6ff; text-decoration: underline; }
+.share-pdf-viewer { display: grid; justify-items: center; gap: 10px; }
+.share-pdf-toolbar { width: 100%; display: flex; justify-content: flex-end; }
+.share-pdf-toolbar a { color: #e3d6ff; text-decoration: underline; }
 .share-pdf-card { display: flex; flex-direction: column; align-items: center; gap: 8px; overflow: hidden; }
 .share-pdf-card .react-pdf__Document { width: 100%; display: flex; justify-content: center; background: #f7f7f7; }
 .share-pdf-card .react-pdf__Page { max-width: 100%; }

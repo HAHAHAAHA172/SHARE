@@ -1,6 +1,6 @@
 .post-social { width: 100%; min-width: 0; color: inherit; }
-.post-social-actions { display: flex; align-items: stretch; gap: 3px; padding-top: 8px; margin-top: 10px; border-top: 1px solid currentColor; border-top-color: color-mix(in srgb, currentColor 15%, transparent); }
-.post-social-actions button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; min-width: 0; padding: 6px 4px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; overflow-wrap: anywhere; }
+.post-social-actions { display: flex; align-items: stretch; gap: 2px; padding-top: 6px; margin-top: 8px; border-top: 1px solid currentColor; border-top-color: color-mix(in srgb, currentColor 15%, transparent); }
+.post-social-actions button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-height: 36px; min-width: 0; padding: 4px 2px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 11px; line-height: 1.15; cursor: pointer; overflow-wrap: anywhere; }
 .post-social-actions button:hover { background: rgba(128, 112, 164, .14); }
 .post-social-actions button:focus-visible { outline: 2px solid #9a89c6; outline-offset: 2px; }
 .post-social-actions svg { flex-shrink: 0; }

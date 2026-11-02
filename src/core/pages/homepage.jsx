@@ -685,7 +685,7 @@ export default function HomePage({
           <div className="share-file-preview-backdrop" role="dialog" aria-modal="true" aria-label="Attachment preview" onClick={() => setPreviewFile(null)}>
             <div className="share-file-preview-modal" onClick={(event) => event.stopPropagation()}>
               <button type="button" className="share-close-btn" aria-label="Close preview" onClick={() => setPreviewFile(null)}><X size={20} /></button>
-              {previewFile.mimetype?.startsWith('image/') ? <img src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : previewFile.mimetype === 'application/pdf' ? <PdfPreviewBoundary src={previewFile.url} large /> : <div className="share-document-preview"><FileText size={48} /><h3>{previewFile.originalname || 'Document'}</h3><a href={previewFile.url} target="_blank" rel="noopener noreferrer" download={previewFile.originalname}>Open document in a new tab</a></div>}
+              {previewFile.mimetype?.startsWith('image/') ? <InlineImage src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : previewFile.mimetype === 'application/pdf' ? <PdfPreviewBoundary src={previewFile.url} large /> : <div className="share-document-preview"><FileText size={48} /><h3>{previewFile.originalname || 'Document'}</h3><a href={previewFile.url} target="_blank" rel="noopener noreferrer" download={previewFile.originalname}>Open document in a new tab</a></div>}
             </div>
           </div>
         )}

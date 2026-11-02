@@ -13,32 +13,40 @@ const bob = '22222222-2222-4222-8222-222222222222';
 const auth = { Authorization: 'Bearer alice-token' };
 
 function provider() {
-  const state = { posts: [], materials: [], files: new Map(), calls: [], fail: '', profile: true };
+  const state = { posts: [], materials: [], likes: [], comments: [], files: new Map(), calls: [], fail: '', profile: true };
   function client(token) {
     state.calls.push({ token });
     return {
       from(table) {
-        let operation = 'select', payload, single = false, count = false;
+        let operation = 'select', payload, single = false, count = false, interval;
         const filters = [];
         const query = {
           select(_columns, options = {}) { count = options.count; return query; },
           eq(name, value) { filters.push([name, value]); return query; },
+          in(name, values) { filters.push([name, values]); return query; },
           order() { return query; }, limit() { return query; },
+          range(start, end) { interval = [start, end]; return query; },
           maybeSingle() { single = true; return query; },
           insert(value) { operation = 'insert'; payload = value; return query; },
+          upsert(value) { operation = 'upsert'; payload = value; return query; },
+          update(value) { operation = 'update'; payload = value; return query; },
           delete() { operation = 'delete'; return query; },
           then(resolve, reject) {
             return Promise.resolve().then(() => {
               state.calls.push({ table, operation, filters, payload });
               if (state.fail === `${table}:${operation}`) return { error: { code: 'XX000', message: 'provider secret' }, data: null };
-              if (table === 'user_profile') return { data: state.profile ? { user_id: alice } : null, error: null };
+              if (table === 'user_profile') return { data: single ? (state.profile ? { user_id: alice } : null) : [{ user_id: alice, full_name: 'Alice' }, { user_id: bob, full_name: 'Bob' }], error: null };
               const rows = state[table];
-              const matches = row => filters.every(([key, value]) => row[key] === value);
+              const matches = row => filters.every(([key, value]) => key.includes('.') || (Array.isArray(value) ? value.includes(row[key]) : row[key] === value));
               if (operation === 'insert') { rows.push(payload); return { data: null, error: null }; }
+              if (operation === 'upsert') { if (!rows.some(row => row.post_id === payload.post_id && row.user_id === payload.user_id)) rows.push({ ...payload, likes_id: 'like-id' }); return { data: null, error: null }; }
               const selected = rows.filter(matches);
               if (operation === 'delete') state[table] = rows.filter(row => !matches(row));
-              const data = selected.map(row => table === 'posts' ? { ...row, materials: state.materials.filter(file => file.post_id === row.id) } : row);
-              return { data: single ? data[0] || null : data, error: null, ...(count ? { count: data.length } : {}) };
+              if (operation === 'update') selected.forEach(row => Object.assign(row, payload));
+              let data = selected.map(row => table === 'posts' ? { ...row, materials: state.materials.filter(file => file.post_id === row.id), likes: [{ count: state.likes.filter(like => like.post_id === row.id).length }], comments: [{ count: state.comments.filter(comment => comment.post_id === row.id && comment.status === 'published').length }] } : row);
+              const total = data.length;
+              if (interval) data = data.slice(interval[0], interval[1] + 1);
+              return { data: single ? data[0] || null : data, error: null, ...(count ? { count: total } : {}) };
             }).then(resolve, reject);
           },
         };
@@ -140,6 +148,57 @@ test('Supabase profile prerequisites and authentication fail before persistent w
 test('existing plain-text Supabase posts remain readable', () => {
   const post = mapSupabasePost({ id: 'example', title: 'Old notes', content: 'Plain description', user_id: alice, materials: [] });
   assert.equal(post.description, 'Plain description'); assert.equal(post.subject, 'General'); assert.equal(post.file, null);
+});
+
+test('post hearts persist, are idempotent, use verified identity and survive feed reload', async t => {
+  const { base, state } = await fixture(t);
+  const { post } = await (await publish(base, false)).json();
+  const endpoint = `${base}/api/posts/${post.id}/like`;
+  assert.equal((await fetch(endpoint, { method: 'POST' })).status, 401);
+  const liked = await (await fetch(endpoint, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: bob }) })).json();
+  assert.equal(liked.liked, true); assert.equal(liked.likes, 1); assert.equal(state.likes[0].user_id, alice);
+  await fetch(endpoint, { method: 'POST', headers: auth });
+  assert.equal(state.likes.length, 1);
+  const ownFeed = await (await fetch(`${base}/api/posts`, { headers: auth })).json();
+  assert.equal(ownFeed.posts[0].liked, true); assert.equal(ownFeed.posts[0].likes, 1);
+  const guest = await (await fetch(`${base}/api/posts/${post.id}/actions`)).json();
+  assert.equal(guest.liked, false); assert.equal(guest.likes, 1);
+  const unliked = await (await fetch(endpoint, { method: 'DELETE', headers: auth })).json();
+  assert.equal(unliked.likes, 0); assert.equal(unliked.liked, false);
+});
+
+test('comments persist, validate content and ownership, and delete without losing reply references', async t => {
+  const { base, state } = await fixture(t);
+  const { post } = await (await publish(base, false)).json();
+  const endpoint = `${base}/api/posts/${post.id}/comments`;
+  const options = content => ({ method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ content, user_id: bob }) });
+  assert.equal((await fetch(endpoint, options(' '.repeat(8)))).status, 400);
+  assert.equal((await fetch(endpoint, options('x'.repeat(2001)))).status, 400);
+  assert.equal(state.comments.length, 0);
+  const response = await fetch(endpoint, options('Useful notes\u0000!'));
+  assert.equal(response.status, 201);
+  const { comment } = await response.json();
+  assert.equal(comment.ownerId, alice); assert.equal(comment.text, 'Useful notes!');
+  const list = await (await fetch(endpoint)).json();
+  assert.equal(list.comments[0].id, comment.id); assert.equal(list.comments[0].author, 'Alice');
+  const actions = await (await fetch(`${base}/api/posts/${post.id}/actions`)).json();
+  assert.equal(actions.commentCount, 1);
+  assert.equal((await fetch(`${endpoint}/${comment.id}`, { method: 'DELETE', headers: { Authorization: 'Bearer bob-token' } })).status, 403);
+  assert.equal((await fetch(`${endpoint}/${comment.id}`, { method: 'DELETE', headers: auth })).status, 200);
+  assert.equal(state.comments[0].status, 'deleted');
+  assert.equal((await (await fetch(endpoint)).json()).comments.length, 0);
+});
+
+test('social requests reject hidden posts, invalid IDs, forged sessions and expose safe provider errors', async t => {
+  const { base, state } = await fixture(t);
+  const { post } = await (await publish(base, false)).json();
+  assert.equal((await fetch(`${base}/api/posts/invalid/actions`)).status, 400);
+  assert.equal((await fetch(`${base}/api/posts/${post.id}/actions`, { headers: { Authorization: 'Bearer forged' } })).status, 401);
+  state.posts[0].post_status = 'draft';
+  assert.equal((await fetch(`${base}/api/posts/${post.id}/like`, { method: 'POST', headers: auth })).status, 404);
+  state.posts[0].post_status = 'published'; state.fail = 'likes:select';
+  const response = await fetch(`${base}/api/posts/${post.id}/actions`);
+  assert.equal(response.status, 503); assert.doesNotMatch(await response.text(), /provider secret/);
 });
 
 test('real Supabase SDK clients forward only the current request token', async t => {

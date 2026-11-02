@@ -6,7 +6,7 @@ import { createUpload, validateUploadedFile, removeUpload } from '../../src/secu
 import { text, httpError } from '../../src/security/server/validation.js';
 
 const subjects = new Set(['DSA', 'OOP', 'Discrete Math', 'OS', 'Syllabi', 'General']);
-const columns = 'id,user_id,title,content,subject,author,post_type,post_status,created_at,updated_at,materials(material_id,post_id,user_id,file_name,storage_path,mime_type,file_size_bytes)';
+const columns = 'id,user_id,title,content,subject,author,post_type,post_status,created_at,updated_at,likes(count),comments(count),materials(material_id,post_id,user_id,file_name,storage_path,mime_type,file_size_bytes)';
 const isUuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const validId = value => { if (!isUuid(value)) throw httpError(400, 'Invalid resource ID.'); return value; };
 
@@ -32,7 +32,7 @@ export function mapSupabasePost(row) {
   const material = row.materials?.[0];
   return {
     id: row.id, ownerId: row.user_id, title: row.title, description, subject, author,
-    createdAt: row.created_at, likes: 0,
+    createdAt: row.created_at, likes: row.likes?.[0]?.count || 0, commentCount: row.comments?.[0]?.count || 0, liked: Boolean(row.liked),
     file: material ? { filename: material.material_id, originalname: material.file_name, mimetype: material.mime_type,
       size: Number(material.file_size_bytes), url: `/api/posts/${row.id}/file` } : null,
   };
@@ -51,8 +51,11 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
   router.get('/', async (req, res) => {
     const query = text(req.query.q, { name: 'Search', max: 200 }).toLowerCase();
     const subject = text(req.query.subject, { name: 'Subject', max: 40, fallback: 'all' }).toLowerCase();
-    const rows = check(await clientFor(req).from('posts').select(columns).eq('post_status', 'published').order('created_at', { ascending: false }).limit(2000));
-    let posts = rows.map(mapSupabasePost);
+    const client = clientFor(req);
+    const rows = check(await client.from('posts').select(columns).eq('post_status', 'published').order('created_at', { ascending: false }).limit(2000));
+    const ownLikes = req.user ? check(await client.from('likes').select('post_id').eq('user_id', req.user.id).limit(2000)) : [];
+    const likedIds = new Set(ownLikes.map(like => like.post_id));
+    let posts = rows.map(row => mapSupabasePost({ ...row, liked: likedIds.has(row.id) }));
     if (subject !== 'all') posts = posts.filter(post => post.subject.toLowerCase() === subject);
     if (query) posts = posts.filter(post => [post.title, post.description, post.author, post.subject].some(value => value.toLowerCase().includes(query)));
     res.set('Cache-Control', 'no-store').json({ success: true, count: posts.length, posts });

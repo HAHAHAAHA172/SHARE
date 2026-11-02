@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './homepage.css';
 import botLogo from '../assets/share_logo1.png';
 import { apiFetch } from '../../shared/api.js';
+import PostActions from '../components/PostActions.jsx';
 import { Search, Menu, Home, Sparkles, Bell, User, ChevronRight, Plus, X, FileText, BookOpen, CheckCircle, Clock, Settings, Star } from 'lucide-react';
 
 // Custom exact PDF document icon matching the screenshot
@@ -330,13 +331,8 @@ export default function HomePage({
               /* Display user posts in responsive cards grid */
               <div className="share-posts-grid">
                 {filteredPosts.map((item) => (
-                  <div
-                    key={item.id}
-                    className="share-post-card"
-                    role="button" tabIndex={0}
-                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handlePostClick(item); } }}
-                    onClick={() => handlePostClick(item)}
-                  >
+                  <article key={item.id} className="share-post-card">
+                    <button type="button" className="share-card-open" onClick={() => handlePostClick(item)} aria-label={`Open post: ${item.title}`}>
                     <div className="share-card-left-icon">
                       <PdfIcon size={32} />
                     </div>
@@ -353,7 +349,9 @@ export default function HomePage({
                     <div className="share-card-arrow">
                       <ChevronRight size={20} color="#1c1c1c" strokeWidth={2.2} />
                     </div>
-                  </div>
+                    </button>
+                    <PostActions key={`${item.id}:${currentUser?.id || 'guest'}`} post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} onPedro={onNavigateToPedro} onSignIn={() => onNavigate?.('login')} />
+                  </article>
                 ))}
               </div>
             ) : (

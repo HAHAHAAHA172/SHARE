@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdirSync } from 'node:fs';
 import { createPostsRouter, createResourceDownload } from './core/posts.js';
 import { createSupabasePostsRouter } from './core/supabasePosts.js';
+import { createSocialRouter } from './core/social.js';
 import { createChatbotRouter } from './chatbot/routes.js';
 import { securityHeaders, restrictOrigins, requestLimiter, safeErrors } from '../src/security/server/http.js';
 import { createRequireAuth, limitConcurrentAI } from '../src/security/server/auth.js';
@@ -34,9 +35,9 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
   if (!createDataClient) app.get('/uploads/:filename', requestLimiter({ limit: rateLimits.downloads ?? 60 }), createResourceDownload({ dataDir, uploadsDir }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', name: 'S.H.A.R.E', aiConfigured: Boolean(ai) }));
   app.use('/api/posts', (req, res, next) => {
-    if (['GET', 'HEAD'].includes(req.method)) return next();
+    if (['GET', 'HEAD'].includes(req.method)) return req.get('Authorization') ? requireAuth(req, res, next) : next();
     requireAuth(req, res, error => error ? next(error) : writeLimit(req, res, next));
-  }, createDataClient ? createSupabasePostsRouter({ createDataClient, uploadsDir, storageBucket,
+  }, createSocialRouter({ createDataClient }), createDataClient ? createSupabasePostsRouter({ createDataClient, uploadsDir, storageBucket,
     downloadLimit: requestLimiter({ limit: rateLimits.downloads ?? 60 }) }) : createPostsRouter({ dataDir, uploadsDir }));
   app.use(['/api/chat', '/api/quiz'], requestLimiter({ limit: rateLimits.aiIp ?? 60, windowMs: 60 * 60 * 1000 }),
     requireAuth, aiLimit, requestLimiter({ limit: rateLimits.aiGlobal ?? 120, windowMs: 60 * 60 * 1000, shared: true }), limitConcurrentAI());

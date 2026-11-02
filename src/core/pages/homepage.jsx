@@ -50,6 +50,8 @@ export default function HomePage({
   const [showProfile, setShowProfile] = useState(false);
   const [showViewAllModal, setShowViewAllModal] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const lastScrollYRef = useRef(0);
   const notificationsAnchorRef = useRef(null);
   const notificationsButtonRef = useRef(null);
   const notificationsPanelRef = useRef(null);
@@ -62,6 +64,24 @@ export default function HomePage({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
+
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const current = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+        const previous = lastScrollYRef.current;
+        if (current <= 24) setHeaderCollapsed(false);
+        else if (current > previous + 4) setHeaderCollapsed(true);
+        lastScrollYRef.current = current;
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Fetch posts on mount
   useEffect(() => {
@@ -276,6 +296,12 @@ export default function HomePage({
           {/* Bottom Pull Handle pill */}
           <div className="share-header-handle-bar"></div>
         </header>
+
+        <div className={`share-compact-header ${headerCollapsed ? 'is-visible' : ''}`} aria-hidden={!headerCollapsed}>
+          <button type="button" className="share-compact-control" aria-label="Notifications" tabIndex={headerCollapsed ? 0 : -1} onClick={() => setShowNotifications(open => !open)}><Bell size={19} /></button>
+          <span className="share-compact-brand"><img src={botLogo} alt="" />S.H.A.R.E.</span>
+          <button type="button" className="share-compact-control" aria-label="Profile" tabIndex={headerCollapsed ? 0 : -1} onClick={() => setShowProfile(open => !open)}><User size={19} /></button>
+        </div>
 
         {/* ================= MIDDLE MAIN BODY (POSTS & FEED) ================= */}
         <main className="share-posts-body">

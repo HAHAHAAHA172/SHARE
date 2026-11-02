@@ -32,7 +32,7 @@ export function mapSupabasePost(row) {
   const material = row.materials?.[0];
   return {
     id: row.id, ownerId: row.user_id, title: row.title, description, subject, author,
-    createdAt: row.created_at, likes: row.likes?.[0]?.count || 0, commentCount: row.comments?.[0]?.count || 0, liked: Boolean(row.liked),
+    createdAt: row.created_at, likes: Number.isFinite(row.likes) ? row.likes : (row.likes?.[0]?.count || 0), commentCount: Number.isFinite(row.commentCount) ? row.commentCount : (row.comments?.[0]?.count || 0), liked: Boolean(row.liked),
     file: material ? { filename: material.material_id, originalname: material.file_name, mimetype: material.mime_type,
       size: Number(material.file_size_bytes), url: `/api/posts/${row.id}/file` } : null,
   };
@@ -53,9 +53,19 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     const subject = text(req.query.subject, { name: 'Subject', max: 40, fallback: 'all' }).toLowerCase();
     const client = clientFor(req);
     const rows = check(await client.from('posts').select(columns).eq('post_status', 'published').order('created_at', { ascending: false }).limit(2000));
-    const ownLikes = req.user ? check(await client.from('likes').select('post_id').eq('user_id', req.user.id).limit(2000)) : [];
+    const [allLikes, allComments] = await Promise.all([
+      client.from('likes').select('post_id,user_id').limit(10000),
+      client.from('comments').select('post_id').eq('status', 'published').limit(10000),
+    ]);
+    const likes = check(allLikes);
+    const comments = check(allComments);
+    const likeCounts = new Map();
+    const commentCounts = new Map();
+    likes.forEach(like => likeCounts.set(like.post_id, (likeCounts.get(like.post_id) || 0) + 1));
+    comments.forEach(comment => commentCounts.set(comment.post_id, (commentCounts.get(comment.post_id) || 0) + 1));
+    const ownLikes = req.user ? likes.filter(like => like.user_id === req.user.id) : [];
     const likedIds = new Set(ownLikes.map(like => like.post_id));
-    let posts = rows.map(row => mapSupabasePost({ ...row, liked: likedIds.has(row.id) }));
+    let posts = rows.map(row => mapSupabasePost({ ...row, liked: likedIds.has(row.id), likes: likeCounts.get(row.id) || 0, commentCount: commentCounts.get(row.id) || 0 }));
     if (subject !== 'all') posts = posts.filter(post => post.subject.toLowerCase() === subject);
     if (query) posts = posts.filter(post => [post.title, post.description, post.author, post.subject].some(value => value.toLowerCase().includes(query)));
     res.set('Cache-Control', 'no-store').json({ success: true, count: posts.length, posts });

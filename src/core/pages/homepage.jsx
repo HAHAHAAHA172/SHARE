@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './homepage.css';
 import botLogo from '../assets/share_logo1.png';
 import { apiFetch, apiUrl } from '../../shared/api.js';
+import { supabase } from '../../security/client/auth.js';
 import PostActions from '../components/PostActions.jsx';
 import { Search, Menu, Home, Sparkles, Bell, User, Plus, X, FileText, BookOpen, CheckCircle, Clock, Settings, Star } from 'lucide-react';
 
@@ -125,6 +126,16 @@ export default function HomePage({
     fetchPosts();
     return () => controller.abort();
   }, [retry, setPosts]);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+    const channel = supabase.channel('share-feed-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => setRetry(value => value + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => setRetry(value => value + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => setRetry(value => value + 1))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   useEffect(() => {
     if (!showDrawer && !showViewAllModal && !showProfile) return;

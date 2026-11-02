@@ -333,7 +333,7 @@ export default function HomePage({
               <div className="share-posts-grid">
                 {filteredPosts.map((item) => (
                   <article key={item.id} className="share-post-card">
-                    <button type="button" className="share-card-open" onClick={() => handlePostClick(item)} aria-label={`Open post: ${item.title}`}>
+                    <div className="share-card-open" role="button" tabIndex={0} onClick={() => handlePostClick(item)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handlePostClick(item); } }}>
                     <div className="share-card-content">
                       <div className="share-feed-author-row">
                         <div className="share-feed-avatar"><User size={18} /></div>
@@ -355,8 +355,7 @@ export default function HomePage({
                       </div>
                     </div>
 
-                    <PostActions post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} onPedro={() => onNavigateToPedro?.(item)} onSignIn={() => onNavigate?.('login')} />
-                    </button>
+                    </div>
                     <PostActions key={`${item.id}:${currentUser?.id || 'guest'}`} post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} onPedro={onNavigateToPedro} onSignIn={() => onNavigate?.('login')} />
                   </article>
                 ))}

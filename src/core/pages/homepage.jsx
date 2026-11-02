@@ -97,6 +97,7 @@ export default function HomePage({
     const previous = lastScrollYRef.current;
     if (current <= 24) setHeaderCollapsed(false);
     else if (current > previous + 3) setHeaderCollapsed(true);
+    else if (current < previous - 6) setHeaderCollapsed(false);
     lastScrollYRef.current = current;
   };
 

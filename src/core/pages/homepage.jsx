@@ -85,25 +85,13 @@ export default function HomePage({
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const current = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
-        const previous = lastScrollYRef.current;
-        if (current <= 24) setHeaderCollapsed(false);
-        else if (current > previous + 4) setHeaderCollapsed(true);
-        lastScrollYRef.current = current;
-        ticking = false;
-      });
-    };
-    const scrollTarget = postsScrollRef.current;
-    scrollTarget?.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { scrollTarget?.removeEventListener('scroll', onScroll); window.removeEventListener('scroll', onScroll); };
-  }, []);
+  const handleFeedScroll = (event) => {
+    const current = event.currentTarget.scrollTop;
+    const previous = lastScrollYRef.current;
+    if (current <= 24) setHeaderCollapsed(false);
+    else if (current > previous + 3) setHeaderCollapsed(true);
+    lastScrollYRef.current = current;
+  };
 
   // Fetch posts on mount
   useEffect(() => {
@@ -321,7 +309,7 @@ export default function HomePage({
 
         <div className={`share-compact-header ${headerCollapsed ? 'is-visible' : ''}`} aria-hidden={!headerCollapsed}>
           <button type="button" className="share-compact-control" aria-label="Notifications" tabIndex={headerCollapsed ? 0 : -1} onClick={() => setShowNotifications(open => !open)}><Bell size={19} /></button>
-          <span className="share-compact-brand"><img src={botLogo} alt="" />S.H.A.R.E.</span>
+          <label className="share-compact-search"><Search size={16} /><input aria-label="Search posts" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search" tabIndex={headerCollapsed ? 0 : -1} /></label>
           <button type="button" className="share-compact-control" aria-label="Profile" tabIndex={headerCollapsed ? 0 : -1} onClick={() => setShowProfile(open => !open)}><User size={19} /></button>
         </div>
 
@@ -369,7 +357,7 @@ export default function HomePage({
           </div>
 
           {/* Posts Scroll Feed or Empty State */}
-          <div className="share-posts-scroll-list" ref={postsScrollRef}>
+          <div className="share-posts-scroll-list" ref={postsScrollRef} onScroll={handleFeedScroll}>
             {loadError && <div className="core-message" role="alert"><p>{loadError}</p><button type="button" onClick={() => setRetry(value => value + 1)}>Retry</button></div>}
             {loading ? (
               <div className="share-loading-state">

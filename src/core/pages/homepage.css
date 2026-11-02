@@ -1087,8 +1087,9 @@
 .share-compact-header.is-visible { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
 .share-compact-control { display: grid; place-items: center; width: 38px; height: 38px; border: 0; border-radius: 50%; color: #fff; background: transparent; cursor: pointer; }
 .share-compact-control:hover, .share-compact-control:focus-visible { background: rgb(255 255 255 / 18%); outline: none; }
-.share-compact-brand { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; letter-spacing: .06em; font-size: 14px; }
-.share-compact-brand img { width: 24px; height: 24px; object-fit: contain; border-radius: 50%; background: #c9b9ef; }
+.share-compact-search { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; margin: 0 8px; color: #fff; }
+.share-compact-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: #fff; background: transparent; font: inherit; }
+.share-compact-search input::placeholder { color: rgb(255 255 255 / 75%); }
 
 @media (max-width: 700px) {
   .share-post-card { flex-basis: min(86vw, 460px); width: min(86vw, 460px); }

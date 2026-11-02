@@ -78,6 +78,7 @@ export default function HomePage({
   const [previewFile, setPreviewFile] = useState(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const lastScrollYRef = useRef(0);
+  const collapsedAtRef = useRef(0);
   const postsScrollRef = useRef(null);
   const notificationsAnchorRef = useRef(null);
   const notificationsButtonRef = useRef(null);
@@ -94,10 +95,9 @@ export default function HomePage({
 
   const handleFeedScroll = (event) => {
     const current = event.currentTarget.scrollTop;
-    const previous = lastScrollYRef.current;
-    if (current <= 24) setHeaderCollapsed(false);
-    else if (current > previous + 3) setHeaderCollapsed(true);
-    else if (current < previous - 6) setHeaderCollapsed(false);
+    // Hysteresis prevents desktop wheel events from repeatedly reversing the animation.
+    if (current <= 20 && headerCollapsed && Date.now() - collapsedAtRef.current > 500) setHeaderCollapsed(false);
+    else if (current >= 72 && !headerCollapsed) { collapsedAtRef.current = Date.now(); setHeaderCollapsed(true); }
     lastScrollYRef.current = current;
   };
 

@@ -1102,6 +1102,11 @@
   .share-post-card { flex-basis: min(86vw, 460px); width: min(86vw, 460px); }
 }
 
+@media (max-width: 700px) {
+  .share-purple-header { transition-duration: .28s; will-change: max-height, padding, opacity; }
+  .share-compact-header { transition-duration: .28s; }
+}
+
 /* The feed itself follows the vertical timeline pattern used by social apps. */
 .share-posts-grid { display: flex; flex-direction: column; align-items: center; gap: 18px; overflow: visible; padding: 4px 0 18px; scroll-snap-type: none; }
 .share-post-card { flex: 0 1 auto; width: min(100%, 680px); }

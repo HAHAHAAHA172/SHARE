@@ -5,7 +5,10 @@ import { httpError } from './validation.js';
 
 export function securityHeaders({ production = false, supabaseUrl } = {}) {
   const connectSrc = ["'self'"];
-  if (supabaseUrl) connectSrc.push(new URL(supabaseUrl).origin);
+  if (supabaseUrl) {
+    const origin = new URL(supabaseUrl).origin;
+    connectSrc.push(origin, origin.replace(/^https:/, 'wss:'));
+  }
   return helmet({
     contentSecurityPolicy: {
       directives: {

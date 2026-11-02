@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { Component, lazy, Suspense, useState, useEffect, useRef } from 'react';
 import './homepage.css';
 import botLogo from '../assets/share_logo1.png';
 import { apiFetch, apiUrl } from '../../shared/api.js';
@@ -32,7 +32,15 @@ function PdfIcon({ size = 30 }) {
 
 const inlineImageCache = new Map();
 const PdfPreview = lazy(() => import('../components/PdfPreview.jsx'));
-const PdfPreviewBoundary = ({ src, large = false }) => <Suspense fallback={<span className="share-media-loading">Loading PDF preview...</span>}><PdfPreview src={src} large={large} /></Suspense>;
+class PdfPreviewErrorBoundary extends Component {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (this.state.failed) return <div className="share-document-preview"><FileText size={48} /><span>PDF preview unavailable</span><a href={this.props.src} target="_blank" rel="noopener noreferrer">Open PDF in a new tab</a></div>;
+    return this.props.children;
+  }
+}
+const PdfPreviewBoundary = ({ src, large = false }) => <PdfPreviewErrorBoundary src={src}><Suspense fallback={<span className="share-media-loading">Loading PDF preview...</span>}><PdfPreview src={src} large={large} /></Suspense></PdfPreviewErrorBoundary>;
 function InlineImage({ src, alt, onError }) {
   const [resolved, setResolved] = useState('');
   useEffect(() => {

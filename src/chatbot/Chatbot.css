@@ -131,3 +131,6 @@
   .pedro-sidebar, .pedro-sidebar-edge { transition-duration: 0.12s; }
   .pedro-chatbot .typing-dot { animation-name: pedroThinkingPulse; }
 }
+/* Conversation history feedback remains reachable when the sidebar is closed. */
+.pedro-history-notice { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); z-index: 80; max-width: min(90vw, 600px); padding: 12px 16px; border: 1px solid #77618f; border-radius: 12px; background: #2d243f; color: #fff; font-size: 14px; }
+.pedro-history-notice button { margin-left: 8px; border: 1px solid #bca6de; border-radius: 8px; padding: 6px 10px; background: #44325f; color: #fff; cursor: pointer; }

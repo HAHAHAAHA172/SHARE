@@ -11,14 +11,11 @@ import ThinkingIndicator from './ThinkingIndicator.jsx';
 import RenameChatDialog from './RenameChatDialog.jsx';
 import QuizDialog from './QuizDialog.jsx';
 import { validateQuizStructure } from '../../shared/quiz.js';
+import useSavedChats, { newChat } from './useSavedChats.js';
 
 function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true }) {
   const [input, setInput] = useState('');
 
-  const [chats, setChats] = useState([
-    { id: 1, title: 'New Conversation', messages: [] }
-  ]);
-  const [activeChatId, setActiveChatId] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
@@ -29,6 +26,7 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
   const [showInputMenu, setShowInputMenu] = useState(false);
   const quizTriggerRef = useRef(null);
   const [isTyping, setIsTyping] = useState(false);
+  const { chats, setChats, activeChatId, setActiveChatId, historyReady, historyError, retryHistory, deleteSaved } = useSavedChats(isTyping);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [quizTopic, setQuizTopic] = useState('');
   const [quizItems, setQuizItems] = useState('5');
@@ -150,18 +148,17 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
   }, [studyPost]);
 
   const createNewChat = () => {
-    const newChatObj = { id: Date.now(), title: 'New Conversation', messages: [] };
+    if (!historyReady || isTyping) return;
+    const newChatObj = newChat();
     setChats(prev => [newChatObj, ...prev]);
     setActiveChatId(newChatObj.id);
   };
 
-  const deleteChat = (id) => {
-    if (chats.length === 1) {
-      alert("You cannot delete your only conversation!");
-      setChatMenu(null);
-      return;
-    }
+  const deleteChat = async (id) => {
+    if (isTyping) return;
+    try { await deleteSaved(id); } catch { return; }
     const updatedChats = chats.filter(c => c.id !== id);
+    if (!updatedChats.length) updatedChats.push(newChat());
     for (const message of chats.find(chat => chat.id === id)?.messages || []) {
       if (message.image) { URL.revokeObjectURL(message.image); messageImageUrls.current.delete(message.image); }
     }
@@ -189,7 +186,10 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
         } else if (chat.title === 'New Conversation' && newMessages.length > 0) {
           title = newMessages[0].text.slice(0, 20) + (newMessages[0].text.length > 20 ? '...' : '');
         }
-        return { ...chat, messages: newMessages, title };
+        const normalized = newMessages.map((message, index) => ({ ...message,
+          id: message.id || chat.messages[index]?.id || crypto.randomUUID(),
+          createdAt: message.createdAt || chat.messages[index]?.createdAt || new Date(Date.now() + index).toISOString() }));
+        return { ...chat, messages: normalized, title };
       }
       return chat;
     }));
@@ -202,7 +202,7 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
   };
 
   const sendMessage = async () => {
-    if ((!input.trim() && !chatFile) || isTyping || sendingRef.current) return;
+    if (!historyReady || (!input.trim() && !chatFile) || isTyping || sendingRef.current) return;
     sendingRef.current = true;
     
     const userMsgText = input;
@@ -297,7 +297,7 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
   };
 
   const startQuizGeneration = async () => {
-    if (sendingRef.current || isTyping) return;
+    if (!historyReady || sendingRef.current || isTyping) return;
     sendingRef.current = true;
     responseStartRef.current = Date.now();
     setLiveElapsed(0);
@@ -519,6 +519,7 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
         <div style={{ position: 'absolute', right: '15px', top: '20px', zIndex: 30, transition: 'right 0.3s ease' }}>
           <button 
             onClick={createNewChat}
+            disabled={!historyReady || isTyping}
             style={{ 
               boxSizing: 'border-box', width: '46px', height: '46px', borderRadius: '50%', backgroundColor: '#000000', color: '#ffffff', 
               border: '3px solid #1d172b', display: 'flex', alignItems: 'center', justifyContent: 'center', 
@@ -537,8 +538,8 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
             <div 
               key={chat.id}
               role="button" tabIndex={0} aria-pressed={chat.id === activeChatId}
-              onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setActiveChatId(chat.id); if (isMobile) setIsSidebarOpen(false); } }}
-              onClick={() => { setActiveChatId(chat.id); if (isMobile) setIsSidebarOpen(false); }}
+              onKeyDown={(e) => { if (!isTyping && e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setActiveChatId(chat.id); if (isMobile) setIsSidebarOpen(false); } }}
+              onClick={() => { if (isTyping) return; setActiveChatId(chat.id); if (isMobile) setIsSidebarOpen(false); }}
               style={{ 
                 backgroundColor: chat.id === activeChatId ? '#44325f' : '#000000', color: '#ffffff', 
                 padding: '10px 12px 10px 18px', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', 
@@ -769,6 +770,8 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
       </div>
 
       {/* ================= CHAT OPTIONS MENU (rename/delete) ================= */}
+      {historyError && <div className="pedro-history-notice" role="alert">{historyError} <button type="button" onClick={retryHistory}>Retry</button></div>}
+      {!historyReady && !historyError && <div className="pedro-history-notice" role="status">Loading your conversations…</div>}
       {chatMenu && (
         <div className="floating-chat-menu" style={{ position: 'fixed', top: chatMenu.top, left: chatMenu.left, backgroundColor: '#161222', border: '1px solid #444', borderRadius: '12px', padding: '6px', width: '130px', zIndex: 9999, boxShadow: '0 8px 16px rgba(0,0,0,0.6)' }}>
           <button type="button" className="pedro-chat-menu-action" onClick={(e) => { e.stopPropagation(); renameChat(chatMenu.id, chatMenu.title); }}>Rename</button>

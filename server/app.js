@@ -36,7 +36,7 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
   app.use('/api/auth', requestLimiter({ limit: rateLimits.auth ?? 10, windowMs: 15 * 60 * 1000 }), createAuthRouter({ createAuthClient, createDataClient, recoveryRedirectTo }));
   app.get('/api/me', requireAuth, (req, res) => res.set('Cache-Control', 'no-store').json({ user: { id: req.user.id } }));
   app.use('/api/conversations', requireAuth, requestLimiter({ limit: 60, perUser: true }), createConversationsRouter({ createDataClient }));
-  if (createDataClient) app.use('/api/profile', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createProfileRouter({ createDataClient }));
+  if (createDataClient) app.use('/api/profile', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createProfileRouter({ createDataClient, storageBucket: process.env.SUPABASE_AVATAR_BUCKET || 'avatars', uploadsDir }));
   if (!createDataClient) app.get('/uploads/:filename', requestLimiter({ limit: rateLimits.downloads ?? 60 }), createResourceDownload({ dataDir, uploadsDir }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', name: 'S.H.A.R.E', aiConfigured: Boolean(ai) }));
   app.use('/api/posts', (req, res, next) => {

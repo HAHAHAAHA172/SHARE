@@ -113,7 +113,7 @@ export default function App() {
     apiFetch('/api/profile').then(async response => {
       const result = await response.json().catch(() => ({}));
       if (!active) return;
-      if (response.status === 404 || (response.ok && (!result.profile?.year_level || !result.profile?.user_name || !result.profile?.full_name))) {
+      if (response.status === 404 || (response.ok && (!result.profile?.year_level || !result.profile?.course_id || !result.profile?.user_name || !result.profile?.full_name))) {
         setProfileSetupChecked(true);
         setRoute({ screen: 'settings', postId: null });
         window.location.hash = '/settings';

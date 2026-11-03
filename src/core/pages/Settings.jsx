@@ -11,8 +11,10 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [draft, setDraft] = useState({ user_name: '', full_name: '', role: 'student', avatar_url: '', year_level: '', course_id: '' });
+  const [courses, setCourses] = useState([]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -21,6 +23,7 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
       setProfile(result.profile);
       setDraft({ user_name: result.profile.user_name || '', full_name: result.profile.full_name || '', role: result.profile.role || 'student', avatar_url: result.profile.avatar_url || '', year_level: result.profile.year_level || '', course_id: result.profile.course_id || '' });
     })).catch(error => setProfileError(error.message));
+    apiFetch('/api/profile/courses').then(response => response.json()).then(result => { if (result.courses) setCourses(result.courses); }).catch(() => {});
   }, [currentUser]);
 
   const userName = profile?.full_name || profile?.user_name || currentUser?.name || 'Guest';
@@ -39,6 +42,16 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
       if (!response.ok) throw new Error(result.error || 'Could not save your profile.');
       setProfile(result.profile); setEditing(false); setMessage('Profile updated successfully.');
     } catch (error) { setProfileError(error.message); } finally { setSaving(false); }
+  };
+  const uploadAvatar = async event => {
+    const file = event.target.files?.[0]; if (!file) return;
+    setUploadingAvatar(true); setProfileError('');
+    try {
+      const body = new FormData(); body.append('avatar', file);
+      const response = await apiFetch('/api/profile/avatar', { method: 'POST', body });
+      const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Could not upload avatar.');
+      setProfile(result.profile); setDraft(previous => ({ ...previous, avatar_url: result.profile.avatar_url || '' })); setMessage('Profile photo updated.');
+    } catch (error) { setProfileError(error.message); } finally { setUploadingAvatar(false); event.target.value = ''; }
   };
 
   return (
@@ -79,8 +92,9 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
             <label>Username<input value={draft.user_name} onChange={event => setDraft({ ...draft, user_name: event.target.value })} required maxLength={40} /></label>
             <label>Full name<input value={draft.full_name} onChange={event => setDraft({ ...draft, full_name: event.target.value })} required maxLength={100} /></label>
             <label>Role<select value={draft.role} onChange={event => setDraft({ ...draft, role: event.target.value })}><option value="student">Student</option><option value="instructor">Instructor</option></select></label>
-            <label>Year level<input value={draft.year_level} onChange={event => setDraft({ ...draft, year_level: event.target.value })} required maxLength={40} placeholder="e.g. 3rd year" /></label>
-            <label>Avatar URL<input value={draft.avatar_url} onChange={event => setDraft({ ...draft, avatar_url: event.target.value })} required placeholder="https://..." /></label>
+            <label>Year level<select value={draft.year_level} onChange={event => setDraft({ ...draft, year_level: event.target.value })} required><option value="">Select year level</option><option value="1st year">1st year</option><option value="2nd year">2nd year</option><option value="3rd year">3rd year</option><option value="4th year">4th year</option></select></label>
+            <label>Course<select value={draft.course_id} onChange={event => setDraft({ ...draft, course_id: event.target.value })} required><option value="">Select course</option>{courses.map(course => <option key={course.course_id} value={course.course_id}>{course.course_name}</option>)}</select></label>
+            <label>Profile photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadAvatar} disabled={uploadingAvatar} /> <small>{uploadingAvatar ? 'Uploading…' : 'JPG, PNG, or WebP up to 5 MB'}</small></label>
             <button className="settings-save-profile" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
           </form>}
 

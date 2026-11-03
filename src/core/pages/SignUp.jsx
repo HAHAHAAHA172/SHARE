@@ -6,6 +6,7 @@ import { signUp } from '../../security/client/auth.js';
 
 export default function SignUp({ onNavigate, onSignUpSuccess }) {
   const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,7 +20,7 @@ export default function SignUp({ onNavigate, onSignUpSuccess }) {
     if (loading) return;
     setErrorMessage('');
     setSuccessMessage('');
-    if (!username.trim() || !email.trim() || !password || !confirmPassword) {
+    if (!username.trim() || !fullName.trim() || !email.trim() || !password || !confirmPassword) {
       setErrorMessage('Please fill in all fields.');
       return;
     }
@@ -32,7 +33,7 @@ export default function SignUp({ onNavigate, onSignUpSuccess }) {
     if (password.length < 10 || password.length > 128) { setErrorMessage('Use a password between 10 and 128 characters.'); return; }
     setLoading(true);
     try {
-      const result = await signUp(username.trim(), email.trim(), password);
+      const result = await signUp(username.trim(), email.trim(), password, fullName.trim());
       setPassword('');
       setConfirmPassword('');
       if (result.session) onSignUpSuccess?.();
@@ -86,6 +87,11 @@ export default function SignUp({ onNavigate, onSignUpSuccess }) {
                 className="signup-input-field"
                 required
               />
+            </div>
+
+            <div className="signup-input-box">
+              <label className="signup-input-label" htmlFor="su-full-name">Full name</label>
+              <input id="su-full-name" type="text" autoComplete="name" maxLength={100} placeholder="e.g. Maria Santos" value={fullName} onChange={event => setFullName(event.target.value)} className="signup-input-field" required />
             </div>
 
             {/* Email Field */}

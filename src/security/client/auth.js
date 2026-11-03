@@ -48,8 +48,8 @@ export async function signIn(email, password, rememberMe) {
   await acceptSession(result.session, rememberMe);
   return result;
 }
-export async function signUp(name, email, password) {
-  const result = await authRequest('signup', { name, email, password });
+export async function signUp(name, email, password, fullName = '') {
+  const result = await authRequest('signup', { name, email, password, ...(fullName ? { fullName } : {}) });
   await acceptSession(result.session, false);
   return result;
 }

@@ -63,10 +63,10 @@ Security controls live under `src/security/`. The server verifies Supabase acces
 
 ## Data and current behavior
 
-- Posts persist in `data/posts.json`; attachments are stored in `uploads/`. Both are local runtime data and ignored by Git. Back these directories up if retaining posted resources.
+- In production, posts, comments, likes, conversations, and uploaded attachments persist through Supabase Database and Storage. Local JSON/filesystem persistence is retained only for the development fallback and should not be used for a multi-instance deployment.
 - Favorites are saved in this browser's local storage and namespaced by the verified Supabase user ID. The optional Remember me choice controls the local auth session only.
-- Comments are explicitly local to the open detail view and are not saved to the server yet.
-- Chat/quiz state stays in memory while moving between the feed and P.E.D.R.O. A page reload resets it. Quiz timers pause while P.E.D.R.O is hidden.
+- Comments and likes are saved through the authenticated API and remain available after reloads; realtime subscriptions refresh the feed when supported by the configured Supabase policies.
+- P.E.D.R.O. conversations and messages are saved per authenticated user. Returning to a conversation reloads its persisted messages; quiz timers pause while P.E.D.R.O is hidden.
 - Opening a resource in P.E.D.R.O prefills its title/description. Its file is not automatically sent to AI; attach it manually to analyze its contents.
 - Invalid post requests and failed saves show errors instead of creating a fake success. Empty feed and favorites views contain no fabricated records.
 

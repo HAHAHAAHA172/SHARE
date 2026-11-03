@@ -8,6 +8,7 @@ import ResourceDetailPage from './core/pages/ResourceDetailPage.jsx';
 import Settings from './core/pages/Settings.jsx';
 import Favorites from './core/pages/Favorites.jsx';
 import { supabase, signOut, readDeviceValue, writeDeviceValue } from './security/client/auth.js';
+import { apiFetch } from './shared/api.js';
 import './core/core.css';
 import './App.css';
 import './security/client/production.css';
@@ -54,6 +55,7 @@ export default function App() {
   const [favorites, setFavorites] = useState(() => readFavorites('guest'));
   const [chatOpened, setChatOpened] = useState(() => readRoute().screen === 'pedro');
   const [studyPost, setStudyPost] = useState(null);
+  const [profileSetupChecked, setProfileSetupChecked] = useState(false);
 
   useEffect(() => {
     // Old local demo profiles are never accepted as authentication.
@@ -75,6 +77,7 @@ export default function App() {
       }
       setAuth(previous => ({ user: session?.user || null, ready: true,
         recovery: event === 'PASSWORD_RECOVERY' || (event !== 'SIGNED_OUT' && previous.recovery) }));
+      if (!session?.user) setProfileSetupChecked(false);
       if (event === 'PASSWORD_RECOVERY') {
         setRoute({ screen: 'login', postId: null });
         window.location.hash = '/login';
@@ -103,6 +106,23 @@ export default function App() {
     }).catch(() => { if (revision === initialRevision) applySession(null, 'RESTORE'); });
     return () => { active = false; subscription.unsubscribe(); };
   }, []);
+
+  useEffect(() => {
+    if (!auth.ready || !auth.user || profileSetupChecked || screen === 'settings' || screen === 'login' || screen === 'signup') return;
+    let active = true;
+    apiFetch('/api/profile').then(async response => {
+      const result = await response.json().catch(() => ({}));
+      if (!active) return;
+      if (response.status === 404 || (response.ok && (!result.profile?.year_level || !result.profile?.user_name || !result.profile?.full_name))) {
+        setProfileSetupChecked(true);
+        setRoute({ screen: 'settings', postId: null });
+        window.location.hash = '/settings';
+        return;
+      }
+      setProfileSetupChecked(true);
+    }).catch(() => { if (active) setProfileSetupChecked(true); });
+    return () => { active = false; };
+  }, [auth.ready, auth.user, auth.user?.id, profileSetupChecked, screen]);
 
   useEffect(() => {
     if (!notification) return;
@@ -176,10 +196,12 @@ export default function App() {
     default: page = <main className="app-route-message"><h1>Page not found</h1><p>This page does not exist.</p><button onClick={() => navigate('home')}>Back to Home</button></main>;
   }
 
-  const protectedScreen = screen === 'create-post' || screen === 'pedro';
+  // The workspace contains user-scoped posts, profile data, favorites, and AI conversations.
+  // Keep only the landing and authentication screens public.
+  const protectedScreen = !['landing', 'login', 'signup', 'not-found'].includes(screen);
   const showChat = screen === 'pedro' && !!currentUser && auth.ready;
   if (protectedScreen && !auth.ready) page = <main className="app-route-message" role="status">Checking your session…</main>;
-  else if (protectedScreen && !currentUser) page = <main className="app-route-message"><h1>Sign in required</h1><p>Sign in to share resources and use P.E.D.R.O.</p><button onClick={() => navigate('login')}>Log In</button><button onClick={() => navigate('home')}>Back to Home</button></main>;
+  else if (protectedScreen && !currentUser) page = <main className="app-route-message"><h1>Sign in required</h1><p>Please log in to access your feed, profile, saved resources, and P.E.D.R.O.</p><button onClick={() => navigate('login')}>Log In</button><button onClick={() => navigate('landing')}>Back to Landing</button></main>;
 
   return <>
     {notification && <p className="app-status" role="status">{notification}</p>}

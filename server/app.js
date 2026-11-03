@@ -5,6 +5,7 @@ import { mkdirSync } from 'node:fs';
 import { createPostsRouter, createResourceDownload } from './core/posts.js';
 import { createSupabasePostsRouter } from './core/supabasePosts.js';
 import { createSocialRouter } from './core/social.js';
+import { createProfileRouter } from './core/profile.js';
 import { createChatbotRouter } from './chatbot/routes.js';
 import { createConversationsRouter } from './chatbot/conversations.js';
 import { securityHeaders, restrictOrigins, requestLimiter, safeErrors } from '../src/security/server/http.js';
@@ -32,9 +33,10 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
   const requireAuth = createRequireAuth({ verifyAccessToken });
   const writeLimit = requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true });
   const aiLimit = requestLimiter({ limit: rateLimits.ai ?? 30, windowMs: 60 * 60 * 1000, perUser: true, message: 'Your study request limit has been reached. Please try again later.' });
-  app.use('/api/auth', requestLimiter({ limit: rateLimits.auth ?? 10, windowMs: 15 * 60 * 1000 }), createAuthRouter({ createAuthClient, recoveryRedirectTo }));
+  app.use('/api/auth', requestLimiter({ limit: rateLimits.auth ?? 10, windowMs: 15 * 60 * 1000 }), createAuthRouter({ createAuthClient, createDataClient, recoveryRedirectTo }));
   app.get('/api/me', requireAuth, (req, res) => res.set('Cache-Control', 'no-store').json({ user: { id: req.user.id } }));
   app.use('/api/conversations', requireAuth, requestLimiter({ limit: 60, perUser: true }), createConversationsRouter({ createDataClient }));
+  if (createDataClient) app.use('/api/profile', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createProfileRouter({ createDataClient }));
   if (!createDataClient) app.get('/uploads/:filename', requestLimiter({ limit: rateLimits.downloads ?? 60 }), createResourceDownload({ dataDir, uploadsDir }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', name: 'S.H.A.R.E', aiConfigured: Boolean(ai) }));
   app.use('/api/posts', (req, res, next) => {

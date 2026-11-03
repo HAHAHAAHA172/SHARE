@@ -15,6 +15,11 @@ export function text(value, { name = 'Value', max = 1000, required = false, fall
   return clean || fallback;
 }
 
+export function formalName(value, { name = 'Name', max = 80, required = false } = {}) {
+  const clean = text(value, { name, max, required }).replace(/\s+/g, ' ');
+  return clean.toLocaleLowerCase().replace(/(^|[\s'-])([a-z\u00c0-\u024f])/giu, (_match, prefix, letter) => `${prefix}${letter.toLocaleUpperCase()}`);
+}
+
 export function pageNumber(value, fallback, maximum) {
   if (value === undefined) return fallback;
   if (typeof value !== 'string' || !/^\d+$/.test(value)) throw httpError(400, 'Invalid pagination.');

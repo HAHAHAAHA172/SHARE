@@ -16,6 +16,7 @@
 .core-module .share-post-card { min-width: 0; }
 .core-module .share-card-title, .core-module .postdetail-topic-headline, .core-module .fav-item-text { overflow-wrap: anywhere; }
 .core-module .createpost-file-badge-name { min-width: 0; }
+
 /* The source logo has generous padding and its mark sits above center.
    Existing circular wrappers clip the enlarged image without cropping the mark. */
 .core-module :is(.landing-logo-img, .share-mascot-img, .login-bot-logo, .signup-bot-logo, .createpost-mascot-img) {

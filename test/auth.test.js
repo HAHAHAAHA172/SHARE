@@ -4,10 +4,10 @@ import { once } from 'node:events';
 import express from 'express';
 import { createAuthRouter } from '../src/security/server/authRoutes.js';
 
-async function fixture(t, createAuthClient, recoveryRedirectTo) {
+async function fixture(t, createAuthClient, recoveryRedirectTo, createDataClient) {
   const app = express();
   app.use(express.json({ limit: '16kb' }));
-  app.use('/api/auth', createAuthRouter({ createAuthClient, recoveryRedirectTo }));
+  app.use('/api/auth', createAuthRouter({ createAuthClient, createDataClient, recoveryRedirectTo }));
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise(resolve => server.close(resolve)));
@@ -86,6 +86,20 @@ test('signup sanitizes display names, keeps authorization metadata out, and hand
   });
   assert.equal(result.body.session, null);
   assert.match(result.body.message, /confirm/);
+});
+
+test('signup rejects case-insensitive duplicate profiles before contacting Auth', async t => {
+  let authCalled = false;
+  const request = await fixture(t, () => { authCalled = true; return {}; }, undefined, () => ({
+    from: table => {
+      assert.equal(table, 'user_profile');
+      return { select: () => ({ ilike: field => ({ limit: async () => ({ data: field === 'user_name' ? [{ user_id: 'existing' }] : [], error: null }) }) }) };
+    },
+  }));
+  const result = await request('signup', { email: 'NEW@EXAMPLE.TEST', password: 'ten letters plus', name: 'mARIA sANTOS', fullName: 'Maria Santos' });
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, 'That username is already in use.');
+  assert.equal(authCalled, false);
 });
 
 test('recovery contacts the provider and does not enumerate accounts', async t => {

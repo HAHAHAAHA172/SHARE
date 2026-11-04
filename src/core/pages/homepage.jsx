@@ -277,14 +277,6 @@ export default function HomePage({
 
             <div className="share-top-right-group">
               <button
-                className="share-login-quick-btn"
-                onClick={() => onNavigate && onNavigate('login')}
-                title="Log In or Switch Account"
-              >
-                Log In
-              </button>
-
-              <button
                 className="share-icon-btn share-avatar-btn"
                 onClick={() => { setShowNotifications(false); setShowProfile(!showProfile); }}
                 title="Profile"
@@ -534,6 +526,16 @@ export default function HomePage({
               </div>
             </div>
             <div className="share-profile-actions">
+              <button
+                type="button"
+                className="share-profile-action-btn"
+                onClick={() => {
+                  setShowProfile(false);
+                  onNavigate?.('settings');
+                }}
+              >
+                Edit Profile
+              </button>
               <button
                 type="button"
                 className="share-profile-action-btn"

@@ -141,6 +141,9 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
               </div>
               <ChevronRight size={18} color="#888" strokeWidth={2} />
             </button>
+            {profile?.role === 'admin' && <button className="settings-row" onClick={() => onNavigate?.('admin')}>
+              <div className="settings-row-left"><span>Post moderation</span></div><ChevronRight size={18} color="#888" strokeWidth={2} />
+            </button>}
           </div>
 
           {/* ── Log Out ── */}

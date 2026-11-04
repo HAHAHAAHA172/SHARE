@@ -7,6 +7,7 @@ import CreatePost from './core/pages/CreatePost.jsx';
 import ResourceDetailPage from './core/pages/ResourceDetailPage.jsx';
 import Settings from './core/pages/Settings.jsx';
 import Favorites from './core/pages/Favorites.jsx';
+import Admin from './core/pages/Admin.jsx';
 import { supabase, signOut, readDeviceValue, writeDeviceValue } from './security/client/auth.js';
 import { apiFetch } from './shared/api.js';
 import './core/core.css';
@@ -14,7 +15,7 @@ import './App.css';
 import './security/client/production.css';
 
 const Chatbot = lazy(() => import('./chatbot/Chatbot.jsx'));
-const screens = new Set(['landing', 'home', 'login', 'signup', 'create-post', 'post-detail', 'pedro', 'settings', 'favorites']);
+const screens = new Set(['landing', 'home', 'login', 'signup', 'create-post', 'post-detail', 'pedro', 'settings', 'favorites', 'admin']);
 function readRoute() {
   if (window.location.pathname !== '/') return { screen: 'not-found', postId: null };
   if (!window.location.hash || window.location.hash === '#/' || window.location.hash === '#') return { screen: 'landing', postId: null };
@@ -191,6 +192,7 @@ export default function App() {
       isFavorite={favorites.some(item => item.id === postId)} onToggleFavorite={toggleFavorite} />; break;
     case 'settings': page = <Settings key={identity} currentUser={currentUser} onNavigate={navigate} onLogout={logout} />; break;
     case 'favorites': page = <Favorites favorites={favorites} onNavigate={navigate} onSelectPost={selectPost} />; break;
+    case 'admin': page = <Admin onNavigate={navigate} />; break;
     case 'pedro': page = null; break;
     case 'home': page = <HomePage currentUser={currentUser} posts={posts} setPosts={setPosts} onNavigate={navigate} onSelectPost={selectPost} onNavigateToPedro={openPedro} />; break;
     default: page = <main className="app-route-message"><h1>Page not found</h1><p>This page does not exist.</p><button onClick={() => navigate('home')}>Back to Home</button></main>;

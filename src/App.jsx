@@ -174,7 +174,7 @@ export default function App() {
     case 'favorites': page = <Favorites favorites={favorites} onNavigate={navigate} onSelectPost={selectPost} />; break;
     case 'admin': page = <Admin onNavigate={navigate} />; break;
     case 'pedro': page = null; break;
-    case 'home': page = <HomePage currentUser={currentUser} posts={posts} setPosts={setPosts} onNavigate={navigate} onSelectPost={selectPost} onNavigateToPedro={openPedro} />; break;
+    case 'home': page = <HomePage currentUser={currentUser} posts={posts} setPosts={setPosts} onNavigate={navigate} onLogout={logout} onSelectPost={selectPost} onNavigateToPedro={openPedro} />; break;
     default: page = <main className="app-route-message"><h1>Page not found</h1><p>This page does not exist.</p><button onClick={() => navigate('home')}>Back to Home</button></main>;
   }
 

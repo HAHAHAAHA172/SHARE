@@ -68,6 +68,7 @@ function InlineImage({ src, alt, onError }) {
 export default function HomePage({
   onNavigateToPedro,
   onNavigate,
+  onLogout,
   onSelectPost,
   currentUser,
   posts = [],
@@ -538,23 +539,13 @@ export default function HomePage({
               </button>
               <button
                 type="button"
-                className="share-profile-action-btn"
-                onClick={() => {
-                  setShowProfile(false);
-                  if (onNavigate) onNavigate('login');
-                }}
-              >
-                Switch Account / Log In
-              </button>
-              <button
-                type="button"
                 className="share-profile-action-btn outline"
                 onClick={() => {
                   setShowProfile(false);
-                  if (onNavigate) onNavigate('signup');
+                  onLogout?.();
                 }}
               >
-                Create New Account
+                Log out
               </button>
             </div>
           </div>

@@ -31,7 +31,7 @@ export function createProfileRouter({ createDataClient, storageBucket = 'avatars
   });
 
   router.get('/courses', async (req, res) => {
-    const result = await clientFor(req).from('courses').select('course_id,course_name').order('course_name');
+    const result = await clientFor(req).from('courses').select('course_id,course_name').eq('is_active', true).order('course_name');
     if (result.error) throw httpError(503, 'Course options are temporarily unavailable.');
     res.set('Cache-Control', 'no-store').json({ courses: result.data || [] });
   });

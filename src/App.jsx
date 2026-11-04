@@ -9,7 +9,6 @@ import Settings from './core/pages/Settings.jsx';
 import Favorites from './core/pages/Favorites.jsx';
 import Admin from './core/pages/Admin.jsx';
 import { supabase, signOut, readDeviceValue, writeDeviceValue } from './security/client/auth.js';
-import { apiFetch } from './shared/api.js';
 import './core/core.css';
 import './App.css';
 import './security/client/production.css';
@@ -56,7 +55,6 @@ export default function App() {
   const [favorites, setFavorites] = useState(() => readFavorites('guest'));
   const [chatOpened, setChatOpened] = useState(() => readRoute().screen === 'pedro');
   const [studyPost, setStudyPost] = useState(null);
-  const [profileSetupChecked, setProfileSetupChecked] = useState(false);
 
   useEffect(() => {
     // Old local demo profiles are never accepted as authentication.
@@ -78,7 +76,6 @@ export default function App() {
       }
       setAuth(previous => ({ user: session?.user || null, ready: true,
         recovery: event === 'PASSWORD_RECOVERY' || (event !== 'SIGNED_OUT' && previous.recovery) }));
-      if (!session?.user) setProfileSetupChecked(false);
       if (event === 'PASSWORD_RECOVERY') {
         setRoute({ screen: 'login', postId: null });
         window.location.hash = '/login';
@@ -107,23 +104,6 @@ export default function App() {
     }).catch(() => { if (revision === initialRevision) applySession(null, 'RESTORE'); });
     return () => { active = false; subscription.unsubscribe(); };
   }, []);
-
-  useEffect(() => {
-    if (!auth.ready || !auth.user || profileSetupChecked || screen === 'settings' || screen === 'login' || screen === 'signup') return;
-    let active = true;
-    apiFetch('/api/profile').then(async response => {
-      const result = await response.json().catch(() => ({}));
-      if (!active) return;
-      if (response.status === 404 || (response.ok && (!result.profile?.year_level || !result.profile?.course_id || !result.profile?.user_name || !result.profile?.full_name))) {
-        setProfileSetupChecked(true);
-        setRoute({ screen: 'settings', postId: null });
-        window.location.hash = '/settings';
-        return;
-      }
-      setProfileSetupChecked(true);
-    }).catch(() => { if (active) setProfileSetupChecked(true); });
-    return () => { active = false; };
-  }, [auth.ready, auth.user, auth.user?.id, profileSetupChecked, screen]);
 
   useEffect(() => {
     if (!notification) return;
@@ -182,10 +162,10 @@ export default function App() {
 
   let page;
   switch (screen) {
-    case 'landing': page = <LandingPage onNavigate={navigate} />; break;
+    case 'landing': page = <LandingPage onNavigate={navigate} currentUser={currentUser} />; break;
     case 'login': page = <Login onNavigate={navigate} onLoginSuccess={login} recoveryMode={auth.recovery} />; break;
     case 'signup': page = <SignUp onNavigate={navigate} onSignUpSuccess={login} />; break;
-    case 'create-post': page = <CreatePost key={identity} currentUser={currentUser} onNavigate={navigate} onPostCreated={post => { setPosts(previous => [post, ...previous]); setNotification('Your resource was published.'); navigate('home'); }} />; break;
+    case 'create-post': page = <CreatePost key={identity} currentUser={currentUser} onNavigate={navigate} onPostCreated={post => { setPosts(previous => [post, ...previous]); setNotification('Your resource was submitted for admin approval.'); navigate('home'); }} />; break;
     case 'post-detail': page = <ResourceDetailPage key={postId || 'no-resource'} postId={postId}
       initialPost={selectedPost?.id === postId ? selectedPost : posts.find(post => post.id === postId) || favorites.find(post => post.id === postId) || null}
       currentUser={currentUser} onNavigate={navigate} onNavigateToPedro={openPedro}

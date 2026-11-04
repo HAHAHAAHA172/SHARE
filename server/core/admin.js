@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { httpError, text } from '../../src/security/server/validation.js';
 
 const postIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const statuses = new Set(['draft', 'published', 'removed']);
+const statuses = new Set(['pending', 'draft', 'published', 'removed']);
 
 function check(result) {
   if (result.error) {

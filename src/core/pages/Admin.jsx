@@ -42,7 +42,7 @@ export default function Admin({ onNavigate }) {
       <button type="button" className="admin-refresh" onClick={load} disabled={loading}><RefreshCw size={18} /> Refresh</button>
     </header>
     <section className="admin-toolbar" aria-label="Moderation filters">
-      {['all', 'draft', 'published', 'removed'].map(value => <button type="button" key={value} className={status === value ? 'active' : ''} onClick={() => setStatus(value)}>{value[0].toUpperCase() + value.slice(1)}</button>)}
+      {['all', 'pending', 'draft', 'published', 'removed'].map(value => <button type="button" key={value} className={status === value ? 'active' : ''} onClick={() => setStatus(value)}>{value[0].toUpperCase() + value.slice(1)}</button>)}
     </section>
     {message && <p className="admin-message success" role="status">{message}</p>}
     {error && <p className="admin-message error" role="alert">{error}</p>}

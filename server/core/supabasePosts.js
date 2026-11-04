@@ -38,7 +38,7 @@ export function mapSupabasePost(row) {
   };
 }
 
-export function createSupabasePostsRouter({ createDataClient, uploadsDir, storageBucket = 'post-files', downloadLimit = (_req, _res, next) => next() }) {
+export function createSupabasePostsRouter({ createDataClient, uploadsDir, storageBucket = 'post-files', downloadLimit = (_req, _res, next) => next(), approvalRequired = false }) {
   const router = Router();
   const upload = createUpload(uploadsDir, { kind: 'resource' });
   const clientFor = req => {
@@ -121,7 +121,7 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
       const now = new Date().toISOString();
       postId = randomUUID();
       const row = { id: postId, user_id: req.user.id, title, content: description, subject, author,
-        post_type: 'discussion', post_status: 'published', created_at: now, updated_at: now };
+        post_type: 'discussion', post_status: approvalRequired ? 'pending' : 'published', created_at: now, updated_at: now };
       let material;
       if (req.file) {
         storagePath = `${req.user.id}/${postId}/${randomUUID()}${path.extname(req.file.filename)}`;

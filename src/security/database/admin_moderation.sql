@@ -4,7 +4,7 @@ create table if not exists public.moderation_actions (
   action_id uuid primary key default gen_random_uuid(),
   post_id uuid not null references public.posts(id) on delete restrict,
   admin_user_id uuid not null references auth.users(id) on delete restrict,
-  action text not null check (action in ('draft', 'published', 'removed')),
+  action text not null check (action in ('pending', 'draft', 'published', 'removed')),
   reason text not null check (char_length(btrim(reason)) between 1 and 500),
   created_at timestamptz not null default now()
 );

@@ -23,7 +23,12 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
       setProfile(result.profile);
       setDraft({ user_name: result.profile.user_name || '', full_name: result.profile.full_name || '', role: result.profile.role || 'student', avatar_url: result.profile.avatar_url || '', year_level: result.profile.year_level || '', course_id: result.profile.course_id || '' });
     })).catch(error => setProfileError(error.message));
-    apiFetch('/api/profile/courses').then(response => response.json()).then(result => { if (result.courses) setCourses(result.courses); }).catch(() => {});
+    apiFetch('/api/profile/courses').then(async response => {
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not load courses.');
+      if (!Array.isArray(result.courses)) throw new Error('The server returned an invalid course list.');
+      setCourses(result.courses);
+    }).catch(error => setProfileError(error.message));
   }, [currentUser]);
 
   const userName = profile?.full_name || profile?.user_name || currentUser?.name || 'Guest';

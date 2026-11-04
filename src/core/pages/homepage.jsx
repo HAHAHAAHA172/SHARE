@@ -247,7 +247,7 @@ export default function HomePage({
               >
                 <Bell size={24} color="#FFFFFF" strokeWidth={2} />
               </button>
-              {showNotifications && (
+              {showNotifications && !headerCollapsed && (
                 <div className="share-notifications-popover" id="share-notifications-panel" ref={notificationsPanelRef} role="dialog" aria-labelledby="share-notifications-title">
                   <div className="share-popup-header">
                     <h4 id="share-notifications-title">Notifications</h4>
@@ -327,7 +327,14 @@ export default function HomePage({
         </header>
 
         <div className={`share-compact-header ${headerCollapsed ? 'is-visible' : ''}`} aria-hidden={!headerCollapsed}>
-          <button type="button" className="share-compact-control" aria-label="Notifications" tabIndex={headerCollapsed ? 0 : -1} onClick={() => setShowNotifications(open => !open)}><Bell size={19} /></button>
+          <div className="share-compact-notifications-anchor">
+            <button type="button" className="share-compact-control" aria-label="Notifications" tabIndex={headerCollapsed ? 0 : -1} onClick={() => { setShowProfile(false); setShowNotifications(open => !open); }}><Bell size={19} /></button>
+            {showNotifications && headerCollapsed && <div className="share-notifications-popover share-compact-notifications" id="share-notifications-panel" ref={notificationsPanelRef} role="dialog" aria-labelledby="share-notifications-title">
+              <div className="share-popup-header"><h4 id="share-notifications-title">Notifications</h4><button aria-label="Close notifications" onClick={() => setShowNotifications(false)}><X size={16} /></button></div>
+              <div className="share-popup-item"><CheckCircle size={18} color="#48bb78" /><div><strong>Welcome to S.H.A.R.E!</strong><p>The academic resource sharing network for students.</p></div></div>
+              <div className="share-popup-item"><Clock size={18} color="#9A89C6" /><div><strong>Your academic community</strong><p>New shared resources appear in your feed.</p></div></div>
+            </div>}
+          </div>
           <label className="share-compact-search"><Search size={16} /><input aria-label="Search posts" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search" tabIndex={headerCollapsed ? 0 : -1} /></label>
           <button type="button" className="share-compact-control" aria-label="Profile" tabIndex={headerCollapsed ? 0 : -1} onClick={() => setShowProfile(open => !open)}><User size={19} /></button>
         </div>

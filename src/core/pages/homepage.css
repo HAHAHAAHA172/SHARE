@@ -780,6 +780,9 @@
   gap: 12px;
 }
 
+.share-compact-notifications-anchor { position: relative; flex-shrink: 0; }
+.share-compact-notifications { top: calc(100% + 8px); left: -8px; right: auto; z-index: 220; }
+
 .share-notifications-popover {
   top: calc(100% + 8px);
   left: 0;

@@ -228,10 +228,10 @@ export default function HomePage({
 
   return (
     <div className="share-app-viewport">
-      <div className={`share-frame-container frame-auto ${headerCollapsed ? 'header-is-collapsed' : ''}`}>
+      <div className={`share-frame-container frame-auto ${headerCollapsed ? 'header-is-collapsed' : ''} ${showNotifications && !headerCollapsed ? 'notifications-open' : ''}`}>
 
         {/* ================= TOP PURPLE HEADER ================= */}
-        <header className={`share-purple-header ${headerCollapsed ? 'is-collapsed' : ''}`}>
+        <header className={`share-purple-header ${headerCollapsed ? 'is-collapsed' : ''} ${showNotifications && !headerCollapsed ? 'notifications-open' : ''}`}>
           {/* Top Row: Notifications, Brand/Title (on desktop), and Profile */}
           <div className="share-top-row">
             <div className="share-notifications-anchor" ref={notificationsAnchorRef}>

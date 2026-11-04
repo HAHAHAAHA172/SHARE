@@ -84,6 +84,7 @@ export default function HomePage({
   // Modals and Drawers
   const [showDrawer, setShowDrawer] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const [showProfile, setShowProfile] = useState(false);
   const [showViewAllModal, setShowViewAllModal] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
@@ -195,6 +196,24 @@ export default function HomePage({
     };
   }, [showNotifications]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    let active = true;
+    apiFetch('/api/notifications').then(async response => {
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not load notifications.');
+      if (active) setNotifications(Array.isArray(result.notifications) ? result.notifications : []);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || !showNotifications) return;
+    apiFetch('/api/notifications').then(response => response.json().then(result => {
+      if (response.ok && Array.isArray(result.notifications)) setNotifications(result.notifications);
+    })).catch(() => {});
+  }, [currentUser, showNotifications]);
+
   // Filter posts by search query and category
   const filteredPosts = localPosts.filter(post => {
     const matchesSubject = selectedSubject === 'All' ||
@@ -253,20 +272,10 @@ export default function HomePage({
                     <h4 id="share-notifications-title">Notifications</h4>
                     <button aria-label="Close notifications" onClick={() => { setShowNotifications(false); notificationsButtonRef.current?.focus(); }}><X size={16} /></button>
                   </div>
-                  <div className="share-popup-item">
-                    <CheckCircle size={18} color="#48bb78" />
-                    <div>
-                      <strong>Welcome to S.H.A.R.E!</strong>
-                      <p>The academic resource sharing network for students.</p>
-                    </div>
-                  </div>
-                  <div className="share-popup-item">
-                    <Clock size={18} color="#9A89C6" />
-                    <div>
-                      <strong>Your academic community</strong>
-                      <p>New shared resources appear in your feed.</p>
-                    </div>
-                  </div>
+                  {notifications.length ? notifications.slice(0, 8).map(item => <div className={`share-popup-item ${item.read_at ? '' : 'is-unread'}`} key={item.notification_id}>
+                    {item.type === 'like' ? <CheckCircle size={18} color="#e9365b" /> : <Clock size={18} color="#9A89C6" />}
+                    <div><strong>{item.title}</strong><p>{item.body}</p><small>{new Date(item.created_at).toLocaleString()}</small></div>
+                  </div>) : <div className="share-popup-item"><Clock size={18} color="#9A89C6" /><div><strong>No notifications yet</strong><p>Updates about your posts will appear here.</p></div></div>}
                 </div>
               )}
             </div>
@@ -331,8 +340,7 @@ export default function HomePage({
             <button type="button" className="share-compact-control" aria-label="Notifications" tabIndex={headerCollapsed ? 0 : -1} onClick={() => { setShowProfile(false); setShowNotifications(open => !open); }}><Bell size={19} /></button>
             {showNotifications && headerCollapsed && <div className="share-notifications-popover share-compact-notifications" id="share-notifications-panel" ref={notificationsPanelRef} role="dialog" aria-labelledby="share-notifications-title">
               <div className="share-popup-header"><h4 id="share-notifications-title">Notifications</h4><button aria-label="Close notifications" onClick={() => setShowNotifications(false)}><X size={16} /></button></div>
-              <div className="share-popup-item"><CheckCircle size={18} color="#48bb78" /><div><strong>Welcome to S.H.A.R.E!</strong><p>The academic resource sharing network for students.</p></div></div>
-              <div className="share-popup-item"><Clock size={18} color="#9A89C6" /><div><strong>Your academic community</strong><p>New shared resources appear in your feed.</p></div></div>
+              {notifications.length ? notifications.slice(0, 8).map(item => <div className={`share-popup-item ${item.read_at ? '' : 'is-unread'}`} key={item.notification_id}><Clock size={18} color="#9A89C6" /><div><strong>{item.title}</strong><p>{item.body}</p><small>{new Date(item.created_at).toLocaleString()}</small></div></div>) : <div className="share-popup-item"><Clock size={18} color="#9A89C6" /><div><strong>No notifications yet</strong><p>Updates about your posts will appear here.</p></div></div>}
             </div>}
           </div>
           <label className="share-compact-search"><Search size={16} /><input aria-label="Search posts" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search" tabIndex={headerCollapsed ? 0 : -1} /></label>

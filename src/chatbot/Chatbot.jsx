@@ -235,7 +235,23 @@ function Chatbot({ currentUser = null, onBack, studyPost = null, isActive = true
     sendingRef.current = true;
     
     const userMsgText = input;
-    const currentFile = chatFile;
+    let currentFile = chatFile;
+    // When opened from a post, forward its protected attachment directly to
+    // the AI upload path. This lets Pedro inspect PDFs even when text
+    // extraction is unavailable (for example, scanned or font-embedded PDFs).
+    if (!currentFile && studyPost?.id && resolvedStudyContext?.attachment?.filename) {
+      try {
+        const attachmentResponse = await apiFetch(`/api/posts/${encodeURIComponent(studyPost.id)}/file`);
+        if (attachmentResponse.ok) {
+          const blob = await attachmentResponse.blob();
+          currentFile = new File([blob], resolvedStudyContext.attachment.filename, {
+            type: resolvedStudyContext.attachment.mimeType || blob.type || 'application/octet-stream',
+          });
+        }
+      } catch {
+        // Metadata context remains available if the attachment cannot be fetched.
+      }
+    }
     const isImageFile = currentFile && currentFile.type && currentFile.type.startsWith('image/');
 
     const attachedImageUrl = isImageFile ? URL.createObjectURL(currentFile) : null;

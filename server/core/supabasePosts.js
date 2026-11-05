@@ -92,6 +92,24 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     }).send(buffer);
   });
 
+  router.get('/:id/context', async (req, res) => {
+    if (!req.user) throw httpError(401, 'Sign in to access attachment context.');
+    const id = validId(req.params.id);
+    const client = clientFor(req);
+    const row = check(await client.from('posts').select('id,user_id,title,content,subject,author,post_status,materials(file_name,mime_type,file_size_bytes,storage_path)').eq('id', id).eq('post_status', 'published').maybeSingle());
+    if (!row) throw httpError(404, 'Resource not found.');
+    const material = row.materials?.[0];
+    let extractedText = '';
+    if (material?.mime_type === 'text/plain' && material.storage_path.startsWith(`${row.user_id}/${id}/`) && material.file_size_bytes <= 120000) {
+      const downloaded = check(await client.storage.from(storageBucket).download(material.storage_path));
+      extractedText = (await downloaded.text()).slice(0, 120000);
+    }
+    res.set('Cache-Control', 'no-store').json({
+      post: { id: row.id, title: row.title, description: row.content || '', subject: row.subject || 'General', author: row.author || 'Student' },
+      attachment: material ? { filename: material.file_name, mimeType: material.mime_type, size: Number(material.file_size_bytes), extractedText, extractionStatus: extractedText ? 'complete' : material.mime_type === 'application/pdf' ? 'pdf-parser-unavailable' : 'unsupported' } : null,
+    });
+  });
+
   router.get('/:id', async (req, res) => {
     const id = validId(req.params.id);
     const row = check(await clientFor(req).from('posts').select(columns).eq('id', id).eq('post_status', 'published').maybeSingle());

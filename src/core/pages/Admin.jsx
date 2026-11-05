@@ -10,12 +10,14 @@ export default function Admin({ onNavigate }) {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [pendingAction, setPendingAction] = useState(null);
+  const [notFound, setNotFound] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
       const response = await apiFetch(`/api/admin/posts?status=${encodeURIComponent(status)}`);
       const result = await response.json();
+      if (response.status === 401 || response.status === 403) { setNotFound(true); return; }
       if (!response.ok) throw new Error(result.error || 'Could not load moderation data.');
       setPosts(result.posts || []);
     } catch (cause) { setError(cause.message); }
@@ -34,6 +36,8 @@ export default function Admin({ onNavigate }) {
       await load();
     } catch (cause) { setError(cause.message); }
   };
+
+  if (notFound) return <main className="app-route-message"><h1>Page not found</h1><p>This page does not exist.</p><button type="button" onClick={() => onNavigate?.('home')}>Back to Home</button></main>;
 
   return <main className="admin-screen">
     <header className="admin-header">

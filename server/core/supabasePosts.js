@@ -13,7 +13,14 @@ const validId = value => { if (!isUuid(value)) throw httpError(400, 'Invalid res
 const MAX_CONTEXT_TEXT = 120000;
 
 async function extractPdfText(buffer) {
-  const document = await getDocument({ data: buffer, isEvalSupported: false, useSystemFonts: false }).promise;
+  // Render runs this extraction in a server-only Node process. Explicitly
+  // disable PDF.js workers so it does not try to spawn a browser worker.
+  const document = await getDocument({
+    data: new Uint8Array(buffer),
+    disableWorker: true,
+    isEvalSupported: false,
+    useSystemFonts: false,
+  }).promise;
   const chunks = [];
   let total = 0;
   try {

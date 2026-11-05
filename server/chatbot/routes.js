@@ -84,6 +84,14 @@ export function createChatbotRouter({ ai, uploadsDir, aiTimeoutMs = 45000, maxOu
         await handler(req, res, { context, config, uploadFile });
       } catch (error) {
         let responseError = error;
+        // Keep provider diagnostics in Render logs without exposing secrets,
+        // prompts, attachment contents, or full provider response bodies.
+        console.error('[chatbot] request failed', {
+          status: error?.status,
+          code: error?.code,
+          name: error?.name,
+          message: typeof error?.message === 'string' ? error.message.slice(0, 300) : undefined,
+        });
         if (error?.code?.startsWith('LIMIT_')) {
           responseError = requestError(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400, error.code === 'LIMIT_FILE_SIZE' ? 'The attachment exceeds the 10 MB limit.' : 'The upload exceeds the allowed file or field limits.');
         }

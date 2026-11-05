@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { httpError, text } from '../../src/security/server/validation.js';
 
 const postIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const statuses = new Set(['pending', 'draft', 'published', 'removed']);
+const statuses = new Set(['pending', 'draft', 'published', 'rejected', 'removed']);
 
 function check(result) {
   if (result.error) {
@@ -47,7 +47,7 @@ export function createAdminRouter({ createDataClient }) {
       const status = text(req.body?.status, { name: 'Status', max: 20, required: true }).toLowerCase();
       if (!statuses.has(status)) throw httpError(400, 'Invalid moderation status.');
       const client = clientFor(req);
-      const reason = text(req.body?.reason, { name: 'Reason', max: 500, fallback: status === 'removed' ? 'Removed by administrator.' : 'Approved by administrator.' });
+      const reason = text(req.body?.reason, { name: 'Reason', max: 500, fallback: status === 'removed' ? 'Removed by administrator.' : status === 'rejected' ? 'Rejected by administrator.' : 'Approved by administrator.' });
       const now = new Date().toISOString();
       const rows = check(await client.from('posts').update({ post_status: status, updated_at: now }).eq('id', req.params.id).select('id,post_status,updated_at'));
       if (!rows?.length) throw httpError(404, 'Post not found or already unavailable.');

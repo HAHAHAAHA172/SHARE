@@ -4,10 +4,16 @@ create table if not exists public.moderation_actions (
   action_id uuid primary key default gen_random_uuid(),
   post_id uuid not null references public.posts(id) on delete restrict,
   admin_user_id uuid not null references auth.users(id) on delete restrict,
-  action text not null check (action in ('pending', 'draft', 'published', 'removed')),
+  action text not null check (action in ('pending', 'draft', 'published', 'rejected', 'removed')),
   reason text not null check (char_length(btrim(reason)) between 1 and 500),
   created_at timestamptz not null default now()
 );
+
+-- Keep an existing moderation_actions table compatible when this migration is rerun.
+alter table public.moderation_actions drop constraint if exists moderation_actions_action_check;
+alter table public.moderation_actions
+  add constraint moderation_actions_action_check
+  check (action in ('pending', 'draft', 'published', 'rejected', 'removed'));
 
 alter table public.moderation_actions enable row level security;
 grant select, insert on public.moderation_actions to authenticated;

@@ -26,7 +26,7 @@ export default function Favorites({ onNavigate, favorites = [], onSelectPost }) 
           >
             <ArrowLeft size={22} color="#ffffff" strokeWidth={2.2} />
           </button>
-          <h1 className="fav-title">Favorites</h1>
+          <h1 className="fav-title">Saved</h1>
           <div className="fav-header-spacer" />
         </header>
 
@@ -35,7 +35,7 @@ export default function Favorites({ onNavigate, favorites = [], onSelectPost }) 
           {items.length === 0 ? (
             <div className="fav-empty">
               <Star size={48} color="#9A89C6" strokeWidth={1.5} />
-              <p>No favorites yet.</p>
+              <p>No saved posts yet.</p>
               <span>Tap the ♡ on any post to save it here.</span>
             </div>
           ) : (

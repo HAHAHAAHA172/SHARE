@@ -621,28 +621,6 @@ export default function HomePage({
                   className="share-drawer-item"
                   onClick={() => {
                     setShowDrawer(false);
-                    if (onNavigate) onNavigate('login');
-                  }}
-                >
-                  <User size={19} />
-                  <span>Log In Screen</span>
-                </button>
-
-                <button
-                  className="share-drawer-item"
-                  onClick={() => {
-                    setShowDrawer(false);
-                    if (onNavigate) onNavigate('signup');
-                  }}
-                >
-                  <Plus size={19} />
-                  <span>Sign Up Screen</span>
-                </button>
-
-                <button
-                  className="share-drawer-item"
-                  onClick={() => {
-                    setShowDrawer(false);
                     if (onNavigate) onNavigate('settings');
                   }}
                 >
@@ -658,7 +636,7 @@ export default function HomePage({
                   }}
                 >
                   <Star size={19} />
-                  <span>Favorites</span>
+                  <span>Saved</span>
                 </button>
 
                 <div className="share-drawer-divider"></div>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createUpload, validateUploadedFile, removeUpload } from '../../src/security/server/uploads.js';
 import { text, httpError } from '../../src/security/server/validation.js';
 
@@ -9,6 +10,23 @@ const subjects = new Set(['DSA', 'OOP', 'Discrete Math', 'OS', 'Syllabi', 'Gener
 const columns = 'id,user_id,title,content,subject,author,post_type,post_status,created_at,updated_at,likes(count),comments(count),materials(material_id,post_id,user_id,file_name,storage_path,mime_type,file_size_bytes)';
 const isUuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const validId = value => { if (!isUuid(value)) throw httpError(400, 'Invalid resource ID.'); return value; };
+const MAX_CONTEXT_TEXT = 120000;
+
+async function extractPdfText(buffer) {
+  const document = await getDocument({ data: buffer, isEvalSupported: false, useSystemFonts: false }).promise;
+  const chunks = [];
+  let total = 0;
+  try {
+    for (let pageNumber = 1; pageNumber <= Math.min(document.numPages, 30) && total < MAX_CONTEXT_TEXT; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = content.items.map(item => typeof item.str === 'string' ? item.str : '').join(' ').replace(/\s+/g, ' ').trim();
+      if (text) { chunks.push(`Page ${pageNumber}: ${text}`); total += text.length; }
+      page.cleanup();
+    }
+  } finally { await document.destroy(); }
+  return chunks.join('\n').slice(0, MAX_CONTEXT_TEXT);
+}
 
 function check(result) {
   if (result.error) {
@@ -100,13 +118,23 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     if (!row) throw httpError(404, 'Resource not found.');
     const material = row.materials?.[0];
     let extractedText = '';
-    if (material?.mime_type === 'text/plain' && material.storage_path.startsWith(`${row.user_id}/${id}/`) && material.file_size_bytes <= 120000) {
+    let extractionStatus = material ? 'unsupported' : null;
+    if (material?.storage_path.startsWith(`${row.user_id}/${id}/`) && material.file_size_bytes <= 10 * 1024 * 1024) {
       const downloaded = check(await client.storage.from(storageBucket).download(material.storage_path));
-      extractedText = (await downloaded.text()).slice(0, 120000);
+      const buffer = Buffer.from(await downloaded.arrayBuffer());
+      if (material.mime_type === 'text/plain') {
+        extractedText = buffer.toString('utf8').slice(0, MAX_CONTEXT_TEXT);
+        extractionStatus = extractedText ? 'complete' : 'empty';
+      } else if (material.mime_type === 'application/pdf') {
+        try {
+          extractedText = await extractPdfText(buffer);
+          extractionStatus = extractedText ? 'complete' : 'empty';
+        } catch { extractionStatus = 'pdf-extraction-failed'; }
+      }
     }
     res.set('Cache-Control', 'no-store').json({
       post: { id: row.id, title: row.title, description: row.content || '', subject: row.subject || 'General', author: row.author || 'Student' },
-      attachment: material ? { filename: material.file_name, mimeType: material.mime_type, size: Number(material.file_size_bytes), extractedText, extractionStatus: extractedText ? 'complete' : material.mime_type === 'application/pdf' ? 'pdf-parser-unavailable' : 'unsupported' } : null,
+      attachment: material ? { filename: material.file_name, mimeType: material.mime_type, size: Number(material.file_size_bytes), extractedText, extractionStatus } : null,
     });
   });
 

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Heart, MessageCircle, Sparkles } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark } from 'lucide-react';
 import { apiFetch } from '../../shared/api.js';
 import './PostActions.css';
 
-export default function PostActions({ post, currentUser, onComment, onPedro, onSignIn, refresh = false, commentVersion = 0 }) {
+export default function PostActions({ post, currentUser, onComment, isFavorite = false, onToggleFavorite, onSignIn, refresh = false, commentVersion = 0 }) {
   const [actions, setActions] = useState({ likes: Number(post.likes) || 0, liked: Boolean(post.liked), commentCount: Number(post.commentCount) || 0 });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -37,13 +37,18 @@ export default function PostActions({ post, currentUser, onComment, onPedro, onS
     finally { setPending(false); }
   }
 
+  function toggleSaved() {
+    if (!currentUser) { onSignIn?.(); return; }
+    onToggleFavorite?.(post);
+  }
+
   return <div className="post-social" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
     <div className="post-social-actions">
       <button type="button" aria-label={actions.liked ? 'Unlike post' : 'Like post'} aria-pressed={actions.liked} className={actions.liked ? 'post-heart is-liked' : 'post-heart'} disabled={pending} onClick={toggleLike}>
         <Heart size={19} fill={actions.liked ? 'currentColor' : 'none'} /><span className="post-count">{actions.likes}</span>
       </button>
       <button type="button" onClick={onComment}><MessageCircle size={18} /><span className="post-action-label">Comment</span><span className="post-count">{actions.commentCount}</span></button>
-      <button type="button" onClick={() => onPedro?.(post)} aria-label="Ask P.E.D.R.O. about this post"><Sparkles size={18} /><span className="post-action-label">Ask P.E.D.R.O.</span></button>
+      <button type="button" onClick={toggleSaved} aria-label={isFavorite ? 'Remove from saved' : 'Save post'} aria-pressed={isFavorite} className={isFavorite ? 'post-save is-saved' : 'post-save'}><Bookmark size={18} fill={isFavorite ? 'currentColor' : 'none'} /><span className="post-action-label">{isFavorite ? 'Saved' : 'Save'}</span></button>
     </div>
     {error && <p className="post-social-error" role="alert">{error}</p>}
   </div>;

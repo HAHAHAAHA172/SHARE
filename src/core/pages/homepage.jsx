@@ -72,7 +72,9 @@ export default function HomePage({
   onSelectPost,
   currentUser,
   posts = [],
-  setPosts
+  setPosts,
+  favorites = [],
+  onToggleFavorite
 }) {
   const localPosts = posts;
   const [loading, setLoading] = useState(true);
@@ -418,7 +420,7 @@ export default function HomePage({
                     </div>
 
                     </div>
-                    <PostActions key={`${item.id}:${currentUser?.id || 'guest'}`} post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} onPedro={onNavigateToPedro} onSignIn={() => onNavigate?.('login')} />
+                    <PostActions key={`${item.id}:${currentUser?.id || 'guest'}`} post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} isFavorite={favorites.some(saved => saved.id === item.id)} onToggleFavorite={onToggleFavorite} onSignIn={() => onNavigate?.('login')} />
                   </article>
                 ))}
               </div>

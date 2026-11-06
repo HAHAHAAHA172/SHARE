@@ -96,7 +96,7 @@
   cursor: pointer;
   padding: 4px 0 16px 0;
   width: fit-content;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 240ms ease-in-out, transform 240ms ease-in-out;
 }
 
 .signup-back-row:hover {

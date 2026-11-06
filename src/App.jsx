@@ -1,19 +1,19 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import HomePage from './core/pages/homepage.jsx';
-import LandingPage from './core/pages/LandingPage.jsx';
-import Login from './core/pages/Login.jsx';
-import SignUp from './core/pages/SignUp.jsx';
-import CreatePost from './core/pages/CreatePost.jsx';
-import ResourceDetailPage from './core/pages/ResourceDetailPage.jsx';
-import Settings from './core/pages/Settings.jsx';
-import Favorites from './core/pages/Favorites.jsx';
-import Admin from './core/pages/Admin.jsx';
 import { supabase, signOut, readDeviceValue, writeDeviceValue } from './security/client/auth.js';
 import './core/core.css';
 import './App.css';
 import './security/client/production.css';
 
 const Chatbot = lazy(() => import('./chatbot/Chatbot.jsx'));
+const HomePage = lazy(() => import('./core/pages/homepage.jsx'));
+const LandingPage = lazy(() => import('./core/pages/LandingPage.jsx'));
+const Login = lazy(() => import('./core/pages/Login.jsx'));
+const SignUp = lazy(() => import('./core/pages/SignUp.jsx'));
+const CreatePost = lazy(() => import('./core/pages/CreatePost.jsx'));
+const ResourceDetailPage = lazy(() => import('./core/pages/ResourceDetailPage.jsx'));
+const Settings = lazy(() => import('./core/pages/Settings.jsx'));
+const Favorites = lazy(() => import('./core/pages/Favorites.jsx'));
+const Admin = lazy(() => import('./core/pages/Admin.jsx'));
 const screens = new Set(['landing', 'home', 'login', 'signup', 'create-post', 'post-detail', 'pedro', 'settings', 'favorites', 'admin']);
 function readRoute() {
   if (window.location.pathname !== '/') return { screen: 'not-found', postId: null };
@@ -187,7 +187,19 @@ export default function App() {
 
   return <>
     {notification && <p className="app-status" role="status">{notification}</p>}
-    <div className="core-module" hidden={showChat}>{page}</div>
+    <div className="core-module" hidden={showChat}><Suspense fallback={<RouteSkeleton />}>{page}</Suspense></div>
     {(chatOpened || showChat) && currentUser && <div hidden={!showChat}><Suspense fallback={<main className="app-route-message" role="status">Opening P.E.D.R.O…</main>}><Chatbot key={identity} currentUser={currentUser} onBack={() => navigate('home')} studyPost={studyPost} isActive={showChat} /></Suspense></div>}
   </>;
+}
+
+function RouteSkeleton() {
+  return <main className="app-route-skeleton" aria-label="Loading page" aria-busy="true">
+    <div className="app-skeleton app-skeleton-header" />
+    <div className="app-skeleton app-skeleton-line" />
+    <div className="app-skeleton-grid">
+      <div className="app-skeleton app-skeleton-card" />
+      <div className="app-skeleton app-skeleton-card" />
+      <div className="app-skeleton app-skeleton-card" />
+    </div>
+  </main>;
 }

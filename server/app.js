@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync } from 'node:fs';
@@ -27,6 +28,9 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', trustProxy || false);
+  // Compress dynamic JSON, HTML, CSS, and JavaScript responses. The middleware
+  // negotiates Brotli when the runtime/client support it and otherwise gzip.
+  app.use(compression({ threshold: 1024 }));
   app.use(securityHeaders({ production, supabaseUrl }));
   app.use(restrictOrigins(allowedOrigins));
   app.use('/api', requestLimiter({ limit: rateLimits.api ?? 120 }));
@@ -52,7 +56,19 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
     requireAuth, aiLimit, requestLimiter({ limit: rateLimits.aiGlobal ?? 120, windowMs: 60 * 60 * 1000, shared: true }), limitConcurrentAI());
   app.use('/api', createChatbotRouter({ ai, uploadsDir: tempDir, aiTimeoutMs }));
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found.' }));
-  if (production) app.use(express.static(staticDir, { dotfiles: 'deny', index: 'index.html' }));
+  if (production) {
+    // Vite fingerprints files in /assets, so they can be cached immutably. Keep
+    // index.html revalidated so a new deployment never points at stale chunks.
+    app.use('/assets', express.static(path.join(staticDir, 'assets'), {
+      dotfiles: 'deny', index: false, immutable: true, maxAge: '1y', fallthrough: false,
+    }));
+    app.use(express.static(staticDir, {
+      dotfiles: 'deny', index: 'index.html', maxAge: '1h',
+      setHeaders(response, filename) {
+        if (path.basename(filename) === 'index.html') response.setHeader('Cache-Control', 'no-cache');
+      },
+    }));
+  }
   app.use((_req, res) => res.status(404).type('text/plain').send('Page not found.'));
   app.use(safeErrors);
   return app;

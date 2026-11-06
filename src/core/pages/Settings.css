@@ -157,7 +157,7 @@
   cursor: pointer;
   width: 100%;
   text-align: left;
-  transition: background 0.18s;
+  transition: background 240ms ease-in-out;
 }
 
 .settings-row:hover,
@@ -239,7 +239,7 @@
   font-size: clamp(15px, 4vw, 17px);
   font-weight: 700;
   color: #e05252;
-  transition: background 0.2s, transform 0.15s;
+  transition: background 240ms ease-in-out, transform 240ms ease-in-out;
   width: 100%;
 }
 
@@ -278,4 +278,3 @@
     padding-bottom: 40px;
   }
 }
-

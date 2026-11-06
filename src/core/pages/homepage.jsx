@@ -67,7 +67,7 @@ function InlineImage({ src, alt, onError }) {
     return () => { active = false; };
   }, [src, onError]);
   if (!resolved) return <span className="share-media-loading">Loading preview…</span>;
-  return <img className="share-feed-media" src={resolved} alt={alt} />;
+  return <img className="share-feed-media" src={resolved} alt={alt} loading="lazy" decoding="async" />;
 }
 
 export default function HomePage({
@@ -390,9 +390,15 @@ export default function HomePage({
           <div className="share-posts-scroll-list" ref={postsScrollRef} onScroll={handleFeedScroll}>
             {loadError && <div className="core-message" role="alert"><p>{loadError}</p><button type="button" onClick={() => setRetry(value => value + 1)}>Retry</button></div>}
             {loading ? (
-              <div className="share-loading-state">
-                <div className="share-spinner"></div>
-                <p>Loading posts...</p>
+              <div className="share-skeleton-grid" aria-label="Loading posts" aria-busy="true">
+                {[0, 1, 2, 3].map(index => (
+                  <div className="share-skeleton-card" key={index}>
+                    <div className="share-skeleton-line share-skeleton-author" />
+                    <div className="share-skeleton-line share-skeleton-title" />
+                    <div className="share-skeleton-line share-skeleton-description" />
+                    <div className="share-skeleton-line share-skeleton-description short" />
+                  </div>
+                ))}
               </div>
             ) : loadError && !localPosts.length ? null : filteredPosts.length > 0 ? (
               /* Display user posts in responsive cards grid */

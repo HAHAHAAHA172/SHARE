@@ -118,7 +118,7 @@
   padding: 4px 10px;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 240ms ease-in-out, transform 240ms ease-in-out;
 }
 
 .share-login-quick-btn:hover {
@@ -134,7 +134,7 @@
   justify-content: center;
   padding: 6px;
   border-radius: 50%;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition: transform 240ms ease-in-out, opacity 240ms ease-in-out;
 }
 
 .share-icon-btn:hover {
@@ -310,7 +310,7 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 240ms ease-in-out, color 240ms ease-in-out, border-color 240ms ease-in-out, box-shadow 240ms ease-in-out;
 }
 
 .share-create-inline-btn:hover {
@@ -363,7 +363,7 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: all 240ms ease-in-out;
 }
 
 .share-chip.active {
@@ -425,7 +425,7 @@
   align-items: center;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  transition: transform 280ms ease-in-out, box-shadow 280ms ease-in-out, background-color 280ms ease-in-out;
   box-sizing: border-box;
 }
 
@@ -553,7 +553,7 @@
   align-items: center;
   gap: 8px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-  transition: transform 0.15s ease, background-color 0.15s ease;
+  transition: transform 240ms ease-in-out, background-color 240ms ease-in-out;
 }
 
 .share-create-first-btn:hover {
@@ -569,6 +569,49 @@
   justify-content: center;
   padding: 40px;
   color: #777;
+}
+
+.share-skeleton-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.share-skeleton-card {
+  min-height: 152px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  background: #f4ece7;
+  overflow: hidden;
+}
+
+.share-skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e6dcd5 25%, #f8f2ef 50%, #e6dcd5 75%);
+  background-size: 200% 100%;
+  animation: share-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.share-skeleton-author { width: 38%; margin-bottom: 20px; }
+.share-skeleton-title { width: 78%; height: 18px; margin-bottom: 14px; }
+.share-skeleton-description { width: 92%; margin-bottom: 8px; }
+.share-skeleton-description.short { width: 64%; }
+
+@media (min-width: 768px) {
+  .share-skeleton-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+}
+
+@media (min-width: 1025px) {
+  .share-skeleton-grid { grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+}
+
+@keyframes share-skeleton-shimmer {
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-skeleton-line { animation: none; }
 }
 
 .share-spinner {
@@ -604,7 +647,7 @@
   align-items: center;
   justify-content: center;
   z-index: 15;
-  transition: transform 0.15s ease, background-color 0.15s ease;
+  transition: transform 280ms ease-in-out, background-color 280ms ease-in-out;
 }
 
 .share-fab-btn:hover {
@@ -640,7 +683,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 14px;
-  transition: transform 0.15s ease;
+  transition: transform 240ms ease-in-out;
 }
 
 .share-nav-item:hover {
@@ -737,7 +780,7 @@
   align-items: flex-start;
   gap: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 240ms ease-in-out;
 }
 
 .share-cat-card:hover,
@@ -943,7 +986,7 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 240ms ease-in-out;
   text-align: left;
 }
 

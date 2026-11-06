@@ -48,7 +48,7 @@
 }
 
 .pedro-chatbot .send-btn {
-  transition: transform 0.1s ease;
+  transition: transform 200ms ease-in-out;
 }
 .pedro-chatbot .send-btn:hover {
   transform: scale(1.08);
@@ -91,8 +91,8 @@
 .pedro-header { position: absolute; inset: 0 0 auto; min-height: 68px; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 20; background: #1d172bf2; border-bottom: 1px solid #ffffff10; box-sizing: border-box; }
 .pedro-back { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #9f7aca66; background: #44325f; border-radius: 12px; padding: 10px 12px; color: #fff; cursor: pointer; font-size: 13px; }
 .pedro-sidebar-backdrop { position: absolute; inset: 0; z-index: 40; border: 0; background: #0009; }
-.pedro-sidebar { transition: margin-left 0.3s cubic-bezier(0.16, 1, 0.3, 1), left 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-.pedro-sidebar-edge { position: absolute; top: 50%; transform: translateY(-50%); z-index: 60; width: 44px; height: 72px; padding: 0; border: 0; background: transparent; color: #c4b6d4; display: flex; align-items: center; justify-content: flex-start; cursor: pointer; transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.pedro-sidebar { transition: margin-left 300ms ease-in-out, left 300ms ease-in-out; }
+.pedro-sidebar-edge { position: absolute; top: 50%; transform: translateY(-50%); z-index: 60; width: 44px; height: 72px; padding: 0; border: 0; background: transparent; color: #c4b6d4; display: flex; align-items: center; justify-content: flex-start; cursor: pointer; transition: left 300ms ease-in-out; }
 /* Show only the outer half of the pill, with a larger transparent click target. */
 .pedro-sidebar-edge::before { content: ''; position: absolute; top: 0; bottom: 0; left: -16px; width: 32px; border: 1px solid #77618f; border-radius: 16px; background: #2d243f; clip-path: inset(0 0 0 50%); pointer-events: none; }
 .pedro-sidebar-edge > svg, .pedro-sidebar-grip { position: relative; pointer-events: none; }
@@ -129,7 +129,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .pedro-chatbot .message-animate, .pedro-chatbot .floating-chat-menu, .pedro-chatbot .menu-animate { animation: none; }
-  .pedro-sidebar, .pedro-sidebar-edge { transition-duration: 0.12s; }
+  .pedro-sidebar, .pedro-sidebar-edge { transition-duration: 200ms; }
   .pedro-chatbot .typing-dot { animation-name: pedroThinkingPulse; }
 }
 /* Conversation history feedback remains reachable when the sidebar is closed. */

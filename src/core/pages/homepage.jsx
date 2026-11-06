@@ -33,6 +33,9 @@ function PdfIcon({ size = 30 }) {
 
 const inlineImageCache = new Map();
 const PdfPreview = lazy(() => import('../components/PdfPreview.jsx'));
+const PptxPreview = lazy(() => import('../components/PptxPreview.jsx'));
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const isPptxFile = (file) => file?.mimetype === PPTX_MIME || file?.originalname?.toLowerCase().endsWith('.pptx');
 class PdfPreviewErrorBoundary extends Component {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
@@ -42,6 +45,7 @@ class PdfPreviewErrorBoundary extends Component {
   }
 }
 const PdfPreviewBoundary = ({ src, large = false }) => <PdfPreviewErrorBoundary src={src}><Suspense fallback={<span className="share-media-loading">Loading PDF preview...</span>}><PdfPreview src={src} large={large} /></Suspense></PdfPreviewErrorBoundary>;
+const PptxPreviewBoundary = ({ src, filename, large = false }) => <Suspense fallback={<span className="share-media-loading">Loading PowerPoint preview...</span>}><PptxPreview src={src} filename={filename} large={large} /></Suspense>;
 function InlineImage({ src, alt, onError }) {
   const [resolved, setResolved] = useState('');
   useEffect(() => {
@@ -410,6 +414,7 @@ export default function HomePage({
                         if (type.startsWith('image/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><InlineImage src={fileUrl} alt={item.file.originalname || 'Post attachment'} onError={() => {}} /><span className="share-media-fallback">Preview unavailable — open the attachment</span></button>;
                         if (type.startsWith('video/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><video className="share-feed-media" src={fileUrl} preload="metadata" muted /></button>;
                         if (type === 'application/pdf') return <button type="button" className="share-feed-file-preview share-pdf-card" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfPreviewBoundary src={fileUrl} /><span>{item.file.originalname || 'Open PDF'}</span></button>;
+                        if (isPptxFile(item.file)) return <button type="button" className="share-feed-file-preview share-pptx-card" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PptxPreviewBoundary src={fileUrl} filename={item.file.originalname} /><span>{item.file.originalname || 'Open PowerPoint'}</span></button>;
                         return <button type="button" className="share-feed-file-preview" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfIcon size={28} /><span>{item.file.originalname || 'Open attachment'}</span></button>;
                       })()}
                       <div className="share-card-meta">
@@ -672,7 +677,7 @@ export default function HomePage({
           <div className="share-file-preview-backdrop" role="dialog" aria-modal="true" aria-label="Attachment preview" onClick={() => setPreviewFile(null)}>
             <div className="share-file-preview-modal" onClick={(event) => event.stopPropagation()}>
               <button type="button" className="share-close-btn" aria-label="Close preview" onClick={() => setPreviewFile(null)}><X size={20} /></button>
-              {previewFile.mimetype?.startsWith('image/') ? <InlineImage src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : previewFile.mimetype === 'application/pdf' ? <PdfPreviewBoundary src={previewFile.url} large /> : <div className="share-document-preview"><FileText size={48} /><h3>{previewFile.originalname || 'Document'}</h3><a href={previewFile.url} target="_blank" rel="noopener noreferrer" download={previewFile.originalname}>Open document in a new tab</a></div>}
+              {previewFile.mimetype?.startsWith('image/') ? <InlineImage src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : previewFile.mimetype === 'application/pdf' ? <PdfPreviewBoundary src={previewFile.url} large /> : isPptxFile(previewFile) ? <PptxPreviewBoundary src={previewFile.url} filename={previewFile.originalname} large /> : <div className="share-document-preview"><FileText size={48} /><h3>{previewFile.originalname || 'Document'}</h3><a href={previewFile.url} target="_blank" rel="noopener noreferrer" download={previewFile.originalname}>Open document in a new tab</a></div>}
             </div>
           </div>
         )}

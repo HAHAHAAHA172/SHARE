@@ -12,7 +12,7 @@ export function securityHeaders({ production = false, supabaseUrl } = {}) {
   return helmet({
     contentSecurityPolicy: {
       directives: {
-        defaultSrc: ["'self'"], scriptSrc: ["'self'"],
+        defaultSrc: ["'self'"], scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
         styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:', 'blob:'],
         connectSrc, fontSrc: ["'self'", 'data:'], objectSrc: ["'none'"],
         baseUri: ["'none'"], frameAncestors: ["'none'"], formAction: ["'self'"],

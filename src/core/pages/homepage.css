@@ -1106,8 +1106,10 @@
 .share-pdf-card .react-pdf__Document { width: 100%; display: flex; justify-content: center; background: #111016; }
 .share-pdf-card .react-pdf__Page { max-width: 100%; }
 .share-pdf-card .react-pdf__Page canvas { max-width: 100%; height: auto !important; }
+.share-pptx-card { display: flex; flex-direction: column; align-items: stretch; gap: 8px; overflow: hidden; padding: 10px; background: #111016; }
+.share-pptx-card > span { overflow: hidden; padding: 0 4px; text-overflow: ellipsis; white-space: nowrap; }
 .share-pdf-page-count { margin: 8px 0 0; color: #ded5ec; font-size: 13px; }
-.share-file-preview-modal .share-close-btn { position: absolute; top: 10px; right: 10px; z-index: 4; display: grid; place-items: center; width: 38px; height: 38px; margin: 0; border: 0; border-radius: 50%; background: rgb(255 255 255 / 14%); color: #fff; }
+.share-file-preview-modal .share-close-btn { position: absolute; top: 10px; right: 10px; z-index: 30; display: grid; place-items: center; width: 38px; height: 38px; margin: 0; border: 0; border-radius: 50%; background: rgb(255 255 255 / 14%); color: #fff; }
 
 .share-compact-header { position: fixed; top: 10px; left: 50%; z-index: 80; display: flex; align-items: center; justify-content: space-between; width: min(86vw, 292px); padding: 4px 7px; border: 1px solid rgb(255 255 255 / 30%); border-radius: 999px; color: #fff; background: rgb(112 88 171 / 96%); box-shadow: 0 6px 14px rgb(44 28 76 / 20%); opacity: 0; pointer-events: none; transform: translate(-50%, -140%) scale(.96); transition: opacity .22s ease, transform .28s cubic-bezier(.16,1,.3,1); will-change: transform, opacity; }
 .share-compact-header.is-visible { opacity: 1; pointer-events: auto; transform: translate(-50%, 0) scale(1); }

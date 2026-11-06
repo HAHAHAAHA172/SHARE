@@ -1,0 +1,82 @@
+.share-pptx-preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: #f8f7ff;
+  background: #111016;
+}
+
+.share-pptx-viewer {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.share-pptx-preview.is-card,
+.share-pptx-preview.is-card .share-pptx-viewer {
+  height: 182px;
+}
+
+.share-pptx-preview.is-card .share-pptx-viewer {
+  pointer-events: none;
+}
+
+.share-pptx-preview.is-large {
+  height: 100%;
+  padding-bottom: 58px;
+  border-radius: 10px;
+  background: #171222;
+}
+
+.share-pptx-preview.is-large .share-pptx-viewer {
+  height: 100%;
+  overflow: hidden;
+}
+
+.share-pptx-loading,
+.share-pptx-fallback {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-height: 160px;
+  padding: 20px;
+  color: #e9e3f4;
+  text-align: center;
+  background: #292233;
+}
+
+.share-pptx-download {
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  color: #211a31;
+  background: #e9ddff;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 24%);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .share-pptx-preview.is-large {
+    padding-bottom: 54px;
+  }
+
+  .share-pptx-download {
+    right: 10px;
+    bottom: 8px;
+  }
+}

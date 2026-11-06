@@ -72,6 +72,7 @@ test('CORS only permits configured origins and security headers are present', as
   assert.equal(allowed.headers.get('x-frame-options'), 'DENY');
   assert.equal(allowed.headers.get('x-powered-by'), null);
   assert.match(allowed.headers.get('content-security-policy'), /object-src 'none'/);
+  assert.match(allowed.headers.get('content-security-policy'), /script-src 'self' 'wasm-unsafe-eval'/);
 });
 
 test('malformed/oversized JSON and invalid field types produce safe client errors', async t => {

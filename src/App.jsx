@@ -192,7 +192,7 @@ export default function App() {
   return <>
     {notification && <p className="app-status" role="status">{notification}</p>}
     <div className="core-module" hidden={showChat}><Suspense fallback={<RouteSkeleton />}>{page}</Suspense></div>
-    {(chatOpened || showChat) && currentUser && <div hidden={!showChat}><Suspense fallback={<main className="app-route-message" role="status">Opening P.E.D.R.O…</main>}><Chatbot key={identity} currentUser={currentUser} onBack={() => navigate('home')} studyPost={studyPost} openVersion={pedroOpenVersion} isActive={showChat} /></Suspense></div>}
+    {(chatOpened || showChat) && currentUser && <div hidden={!showChat}><Suspense fallback={<main className="app-route-message" role="status">Opening P.E.D.R.O…</main>}><Chatbot key={`${identity}:${pedroOpenVersion}`} currentUser={currentUser} onBack={() => navigate('home')} studyPost={studyPost} openVersion={pedroOpenVersion} isActive={showChat} /></Suspense></div>}
   </>;
 }
 

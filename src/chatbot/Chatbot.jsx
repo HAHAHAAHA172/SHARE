@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useEffectEvent, useCallback } from 'react';
+import { useState, useRef, useEffect, useEffectEvent, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -45,12 +45,13 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
   const textareaRef = useRef(null);
   const sendingRef = useRef(false);
   const messageImageUrls = useRef(new Set());
+  const [landingSession, setLandingSession] = useState(() => openVersion > 0);
   useEffect(() => () => {
     for (const url of messageImageUrls.current) URL.revokeObjectURL(url);
     messageImageUrls.current.clear();
   }, []);
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
-  const messages = activeChat.messages;
+  const messages = useMemo(() => landingSession ? [] : activeChat.messages, [activeChat.messages, landingSession]);
   const [liveElapsed, setLiveElapsed] = useState(0);
   const responseStartRef = useRef(null);
   const [quizFile, setQuizFile] = useState(null);
@@ -109,7 +110,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
   useEffect(() => {
     if (chatFile && chatFile.type && chatFile.type.startsWith('image/')) {
       const url = URL.createObjectURL(chatFile);
-      // Synchronize the browser object URL with its revocation lifecycle.
+      // The object URL must be created after the file changes and revoked on cleanup.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setChatFilePreview(url);
       return () => URL.revokeObjectURL(url);
@@ -123,14 +124,9 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
     const newChatObj = newChat();
     setChats(prev => [newChatObj, ...prev]);
     setActiveChatId(newChatObj.id);
+    setLandingSession(false);
     return true;
   }, [historyReady, isTyping, setActiveChatId, setChats]);
-
-  const openedVersionRef = useRef(0);
-  useEffect(() => {
-    if (!isActive || !historyReady || !openVersion || openedVersionRef.current === openVersion) return;
-    if (createNewChat()) openedVersionRef.current = openVersion;
-  }, [createNewChat, historyReady, isActive, openVersion]);
 
   const deleteChat = async (id) => {
     if (isTyping) return;
@@ -155,9 +151,9 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
     requestAnimationFrame(() => chatOptionsTriggerRef.current?.focus());
   };
 
-  const updateActiveChatMessages = (newMessages, customTitle = null) => {
+  const updateActiveChatMessages = (newMessages, customTitle = null, targetChatId = activeChatId) => {
     setChats(prevChats => prevChats.map(chat => {
-      if (chat.id === activeChatId) {
+      if (chat.id === targetChatId) {
         let title = chat.title;
         if (customTitle) {
           title = customTitle;
@@ -182,6 +178,16 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
   const sendMessage = async () => {
     if (!historyReady || (!input.trim() && !chatFile) || isTyping || sendingRef.current) return;
     sendingRef.current = true;
+    let conversationId = activeChatId;
+    let conversationMessages = messages;
+    if (landingSession) {
+      const newChatObj = newChat();
+      setChats(prev => [newChatObj, ...prev]);
+      setActiveChatId(newChatObj.id);
+      setLandingSession(false);
+      conversationId = newChatObj.id;
+      conversationMessages = [];
+    }
     
     const userMsgText = input;
     const currentFile = chatFile;
@@ -194,13 +200,13 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
       ? `*📄 Attached File: ${currentFile.name}*\n\n${userMsgText}`
       : userMsgText;
       
-    const newMessages = [...messages, { 
+    const newMessages = [...conversationMessages, {
       role: 'user', 
       text: displayMsg, 
       image: attachedImageUrl, 
       fileName: currentFile ? currentFile.name : null 
     }];
-    updateActiveChatMessages(newMessages);
+    updateActiveChatMessages(newMessages, null, conversationId);
 
     setInput('');
     setChatFile(null);
@@ -214,7 +220,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
 
     const slidingWindowHistory = newMessages.slice(-6);
     const requestMessage = userMsgText;
-    updateActiveChatMessages([...newMessages, { role: 'bot', text: '' }]);
+    updateActiveChatMessages([...newMessages, { role: 'bot', text: '' }], null, conversationId);
 
     let botReply = '';
     let pending = '';
@@ -224,7 +230,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
       if (pending) {
         botReply += pending;
         pending = '';
-        updateActiveChatMessages([...newMessages, { role: 'bot', text: botReply }]);
+        updateActiveChatMessages([...newMessages, { role: 'bot', text: botReply }], null, conversationId);
       }
     };
 
@@ -259,12 +265,12 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
       if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
       flush();
       const finalDuration = responseStartRef.current ? (Date.now() - responseStartRef.current) / 1000 : null;
-      updateActiveChatMessages([...newMessages, { role: 'bot', text: botReply, duration: finalDuration }]);
+      updateActiveChatMessages([...newMessages, { role: 'bot', text: botReply, duration: finalDuration }], null, conversationId);
     } catch (error) {
       console.error(error);
       if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
       const finalDuration = responseStartRef.current ? (Date.now() - responseStartRef.current) / 1000 : null;
-      updateActiveChatMessages([...newMessages, { role: 'bot', text: [botReply + pending, error.message || 'Unable to connect to PEDRO. Please try again.'].filter(Boolean).join('\n\n'), duration: finalDuration }]);
+      updateActiveChatMessages([...newMessages, { role: 'bot', text: [botReply + pending, error.message || 'Unable to connect to PEDRO. Please try again.'].filter(Boolean).join('\n\n'), duration: finalDuration }], null, conversationId);
     } finally {
       setIsTyping(false);
       sendingRef.current = false;
@@ -274,6 +280,16 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
   const startQuizGeneration = async () => {
     if (!historyReady || sendingRef.current || isTyping) return;
     sendingRef.current = true;
+    let conversationId = activeChatId;
+    let conversationMessages = messages;
+    if (landingSession) {
+      const newChatObj = newChat();
+      setChats(prev => [newChatObj, ...prev]);
+      setActiveChatId(newChatObj.id);
+      setLandingSession(false);
+      conversationId = newChatObj.id;
+      conversationMessages = [];
+    }
     responseStartRef.current = Date.now();
     setLiveElapsed(0);
     setShowQuizModal(false);
@@ -285,8 +301,8 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
         ? `Create a mock quiz based on the uploaded file "${quizFile.name}". Instructions: ${fileInstructions || 'General coverage'} (${quizItems} items, ${quizParts} parts)`
         : `Create a mock quiz about: ${quizTopic || 'General Knowledge'} (${quizItems} items, ${quizParts} parts)` 
     };
-    const updatedMsgs = [...messages, quizUserMsg];
-    updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: '', pendingKind: 'quiz' }], `Quiz: ${quizFile ? quizFile.name : (quizTopic || 'General Knowledge')}`);
+    const updatedMsgs = [...conversationMessages, quizUserMsg];
+    updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: '', pendingKind: 'quiz' }], `Quiz: ${quizFile ? quizFile.name : (quizTopic || 'General Knowledge')}`, conversationId);
 
     try {
       let response;
@@ -325,11 +341,11 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
       
       if (enableTimer) setTimeLeft((timePerPart[0] || 5) * 60);
 
-      updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: `✨ Quiz generated successfully! Launching **${data.title}** now...` }]);
+      updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: `✨ Quiz generated successfully! Launching **${data.title}** now...` }], null, conversationId);
     } catch (error) {
       console.error('Quiz loading error:', error);
       setActiveQuizData(null);
-      updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: error.message || 'Unable to generate a quiz. Please try again.' }]);
+      updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: error.message || 'Unable to generate a quiz. Please try again.' }], null, conversationId);
     } finally {
       setIsTyping(false);
       sendingRef.current = false;

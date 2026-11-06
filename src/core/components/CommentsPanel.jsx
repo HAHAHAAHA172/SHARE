@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { User, Send } from 'lucide-react';
 import { apiFetch } from '../../shared/api.js';
 
-export default function CommentsPanel({ postId, currentUser, onSignIn, onChange, focusInput = false }) {
+export default function CommentsPanel({ postId, currentUser, onSignIn, onChange, focusInput = false, refreshVersion = 0 }) {
   const [comments, setComments] = useState([]);
   const [draft, setDraft] = useState('');
   const [page, setPage] = useState(1);
@@ -19,19 +19,23 @@ export default function CommentsPanel({ postId, currentUser, onSignIn, onChange,
     async function load() {
       setLoading(true); setError('');
       try {
-        const response = await apiFetch(`/api/posts/${encodeURIComponent(postId)}/comments?page=${page}`, { signal: controller.signal });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Could not load comments.');
+        // Replace all loaded pages so deletions and changes do not leave stale rows.
+        const pages = await Promise.all(Array.from({ length: page }, async (_, index) => {
+          const response = await apiFetch(`/api/posts/${encodeURIComponent(postId)}/comments?page=${index + 1}`, { signal: controller.signal });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Could not load comments.');
+          return result;
+        }));
         if (!controller.signal.aborted) {
-          setComments(previous => page === 1 ? result.comments : [...new Map([...previous, ...result.comments].map(comment => [comment.id, comment])).values()]);
-          setHasMore(result.hasMore);
+          setComments([...new Map(pages.flatMap(result => result.comments).map(comment => [comment.id, comment])).values()]);
+          setHasMore(pages.at(-1).hasMore);
         }
       } catch (failure) { if (!controller.signal.aborted) setError(failure.message || 'Could not load comments.'); }
       finally { if (!controller.signal.aborted) setLoading(false); }
     }
     load();
     return () => controller.abort();
-  }, [postId, currentUser?.id, page, retry]);
+  }, [postId, currentUser?.id, page, retry, refreshVersion]);
   useEffect(() => { if (focusInput) inputRef.current?.focus(); }, [focusInput]);
 
   async function submit(event) {
@@ -43,7 +47,7 @@ export default function CommentsPanel({ postId, currentUser, onSignIn, onChange,
       const response = await apiFetch(`/api/posts/${encodeURIComponent(postId)}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: draft }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Could not publish your comment.');
-      setComments(previous => [...previous, result.comment]); setDraft(''); setSuccess('Comment published.'); onChange?.();
+      setComments(previous => [...new Map([...previous, result.comment].map(comment => [comment.id, comment])).values()]); setDraft(''); setSuccess('Comment published.'); onChange?.();
     } catch (failure) { setError(failure.message || 'Could not publish your comment. Your draft is still here.'); }
     finally { setPending(false); }
   }

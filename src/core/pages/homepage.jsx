@@ -4,6 +4,7 @@ import botLogo from '../assets/share_logo1.png';
 import { apiFetch, apiUrl } from '../../shared/api.js';
 import { supabase } from '../../security/client/auth.js';
 import PostActions from '../components/PostActions.jsx';
+import { watchFeedUpdates } from '../feedUpdates.js';
 import { Search, Menu, Home, Sparkles, Bell, User, Plus, X, FileText, BookOpen, CheckCircle, Clock, Settings, Star } from 'lucide-react';
 
 // Custom exact PDF document icon matching the screenshot
@@ -80,6 +81,7 @@ export default function HomePage({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [retry, setRetry] = useState(0);
+  const hasLoadedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All');
 
@@ -120,14 +122,17 @@ export default function HomePage({
     const controller = new AbortController();
     const fetchPosts = async () => {
       try {
-        setLoading(true);
+        if (!hasLoadedRef.current) setLoading(true);
         setLoadError('');
         const res = await apiFetch('/api/posts', { signal: controller.signal });
         if (!res.ok) throw new Error('Could not load posts. Please try again.');
         if (res.ok) {
           const data = await res.json();
           const fetched = data.posts || [];
-          if (!controller.signal.aborted && setPosts) setPosts(fetched);
+          if (!controller.signal.aborted && setPosts) {
+            hasLoadedRef.current = true;
+            setPosts([...new Map(fetched.map(post => [post.id, post])).values()]);
+          }
         }
       } catch (err) {
         if (!controller.signal.aborted) setLoadError(err.message || 'Could not reach the server. Please try again.');
@@ -138,17 +143,11 @@ export default function HomePage({
 
     fetchPosts();
     return () => controller.abort();
-  }, [retry, setPosts]);
+  }, [retry, setPosts, currentUser?.id]);
 
   useEffect(() => {
-    if (!supabase) return undefined;
-    const channel = supabase.channel('share-feed-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => setRetry(value => value + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => setRetry(value => value + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => setRetry(value => value + 1))
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+    return watchFeedUpdates({ client: supabase, refresh: () => setRetry(value => value + 1) });
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (!showDrawer && !showViewAllModal && !showProfile) return;

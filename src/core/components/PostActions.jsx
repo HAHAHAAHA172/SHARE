@@ -7,6 +7,12 @@ export default function PostActions({ post, currentUser, onComment, isFavorite =
   const [actions, setActions] = useState({ likes: Number(post.likes) || 0, liked: Boolean(post.liked), commentCount: Number(post.commentCount) || 0 });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [snapshot, setSnapshot] = useState(post);
+  // Reconcile refreshed API counts without overwriting an in-flight reaction.
+  if (snapshot !== post && !pending) {
+    setSnapshot(post);
+    setActions({ likes: Number(post.likes) || 0, liked: Boolean(post.liked), commentCount: Number(post.commentCount) || 0 });
+  }
   useEffect(() => {
     if (!refresh) return;
     const controller = new AbortController();

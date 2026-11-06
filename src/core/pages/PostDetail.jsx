@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './PostDetail.css';
 import { API_BASE_URL } from '../../shared/api.js';
 import { ArrowLeft, Bookmark, User, FileText, Download } from 'lucide-react';
 import PostActions from '../components/PostActions.jsx';
 import CommentsPanel from '../components/CommentsPanel.jsx';
+import { supabase } from '../../security/client/auth.js';
+import { watchFeedUpdates } from '../feedUpdates.js';
 
-export default function PostDetail({ post, currentUser, onNavigate, onNavigateToPedro, isFavorite = false, onToggleFavorite }) {
+export default function PostDetail({ post, currentUser, onNavigate, isFavorite = false, onToggleFavorite }) {
   const [commentVersion, setCommentVersion] = useState(0);
   const [focusComment, setFocusComment] = useState(0);
+  const [liveVersion, setLiveVersion] = useState(0);
+  useEffect(() => watchFeedUpdates({ client: supabase, refresh: () => setLiveVersion(value => value + 1) }), [currentUser?.id, post.id]);
 
   const displayTitle = post?.title || 'Post unavailable';
   const displayAuthor = post?.author || 'Student';
@@ -80,10 +84,10 @@ export default function PostDetail({ post, currentUser, onNavigate, onNavigateTo
             ) : <p className="core-muted">No attachment on this post.</p>}
           </div>
 
-          <PostActions post={post} currentUser={currentUser} onPedro={onNavigateToPedro} onComment={() => { setFocusComment(value => value + 1); document.getElementById('post-comments')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }} onSignIn={() => onNavigate?.('login')} refresh commentVersion={commentVersion} />
+          <PostActions post={post} currentUser={currentUser} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} onComment={() => { setFocusComment(value => value + 1); document.getElementById('post-comments')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }} onSignIn={() => onNavigate?.('login')} refresh commentVersion={`${commentVersion}:${liveVersion}`} />
         </div>
 
-        <CommentsPanel key={`${post.id}:${currentUser?.id || 'guest'}`} postId={post.id} currentUser={currentUser} onSignIn={() => onNavigate?.('login')} focusInput={focusComment} onChange={() => setCommentVersion(value => value + 1)} />
+        <CommentsPanel key={`${post.id}:${currentUser?.id || 'guest'}`} postId={post.id} currentUser={currentUser} refreshVersion={liveVersion} onSignIn={() => onNavigate?.('login')} focusInput={focusComment} onChange={() => setCommentVersion(value => value + 1)} />
       </div>
     </div>
   );

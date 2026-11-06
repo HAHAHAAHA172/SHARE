@@ -37,3 +37,12 @@
 | `6870043` | 2026-11-05 | Added admin security refinements, v0.670.89 |
 | `aa2b3a1` | 2026-11-05 | Added unauthorized-admin fallback, v0.670.94 |
 | `6355fae` | 2026-11-05 | Added changelog history, v0.68 |
+| `af075b7` | 2026-11-05 | added PEDRO attachment context v(0.68.45) |
+| `8ba0350` | 2026-11-05 | added PEDRO attachment context v(0.68.45.4) |
+| `ddc8189` | 2026-11-05 | fix Pedro attachment context messaging |
+| `0a9f5d5` | 2026-11-05 | fix server PDF extraction for Pedro context |
+| `3bd9a3c` | 2026-11-05 | added PEDRO attachment context v(0.68.45.8) |
+| `5fa61c8` | 2026-11-05 | log safe chatbot provider diagnostics |
+| `9a66c56` | 2026-11-06 | added PEDRO attachment context v(0.68.45.2) |
+| `ce92d3c` | 2026-11-06 | -removed PEDRO attachment context -added save post feature -removed login and signup page buttons in sidebar v(0.68.45.2) |
+| `66b79eb` | 2026-11-06 | save feature added v(0.69.88) |

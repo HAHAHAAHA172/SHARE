@@ -48,14 +48,14 @@ export default function PostActions({ post, currentUser, onComment, isFavorite =
     onToggleFavorite?.(post);
   }
 
-  return <div className="post-social" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
-    <div className="post-social-actions">
+  return <div className="share-resource-actions" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+    <div className="share-resource-controls" role="group" aria-label="Post actions">
       <button type="button" aria-label={actions.liked ? 'Unlike post' : 'Like post'} aria-pressed={actions.liked} className={actions.liked ? 'post-heart is-liked' : 'post-heart'} disabled={pending} onClick={toggleLike}>
         <Heart size={19} fill={actions.liked ? 'currentColor' : 'none'} /><span className="post-count">{actions.likes}</span>
       </button>
-      <button type="button" onClick={onComment}><MessageCircle size={18} /><span className="post-action-label">Comment</span><span className="post-count">{actions.commentCount}</span></button>
+      <button type="button" onClick={onComment} aria-label={`Comments (${actions.commentCount})`}><MessageCircle size={18} /><span className="post-action-label">Comment</span><span className="post-count">{actions.commentCount}</span></button>
       <button type="button" onClick={toggleSaved} aria-label={isFavorite ? 'Remove from saved' : 'Save post'} aria-pressed={isFavorite} className={isFavorite ? 'post-save is-saved' : 'post-save'}><Bookmark size={18} fill={isFavorite ? 'currentColor' : 'none'} /><span className="post-action-label">{isFavorite ? 'Saved' : 'Save'}</span></button>
     </div>
-    {error && <p className="post-social-error" role="alert">{error}</p>}
+    {error && <p className="share-resource-action-error" role="alert">{error}</p>}
   </div>;
 }

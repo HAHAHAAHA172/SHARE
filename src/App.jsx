@@ -54,6 +54,7 @@ export default function App() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [favorites, setFavorites] = useState(() => readFavorites('guest'));
   const [chatOpened, setChatOpened] = useState(() => readRoute().screen === 'pedro');
+  const [pedroOpenVersion, setPedroOpenVersion] = useState(() => readRoute().screen === 'pedro' ? 1 : 0);
   const [studyPost, setStudyPost] = useState(null);
 
   useEffect(() => {
@@ -128,7 +129,10 @@ export default function App() {
   const navigate = (next, data) => {
     if (!screens.has(next)) return;
     if (next === 'post-detail' && data) setSelectedPost(data);
-    if (next === 'pedro') setChatOpened(true);
+    if (next === 'pedro') {
+      setChatOpened(true);
+      setPedroOpenVersion(value => value + 1);
+    }
     const nextPostId = next === 'post-detail' ? data?.id || null : null;
     setRoute({ screen: next, postId: nextPostId });
     if (window.location.pathname !== '/') window.history.replaceState(null, '', '/');
@@ -188,7 +192,7 @@ export default function App() {
   return <>
     {notification && <p className="app-status" role="status">{notification}</p>}
     <div className="core-module" hidden={showChat}><Suspense fallback={<RouteSkeleton />}>{page}</Suspense></div>
-    {(chatOpened || showChat) && currentUser && <div hidden={!showChat}><Suspense fallback={<main className="app-route-message" role="status">Opening P.E.D.R.O…</main>}><Chatbot key={identity} currentUser={currentUser} onBack={() => navigate('home')} studyPost={studyPost} isActive={showChat} /></Suspense></div>}
+    {(chatOpened || showChat) && currentUser && <div hidden={!showChat}><Suspense fallback={<main className="app-route-message" role="status">Opening P.E.D.R.O…</main>}><Chatbot key={identity} currentUser={currentUser} onBack={() => navigate('home')} studyPost={studyPost} openVersion={pedroOpenVersion} isActive={showChat} /></Suspense></div>}
   </>;
 }
 

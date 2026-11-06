@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useEffectEvent } from 'react';
+import { useState, useRef, useEffect, useEffectEvent, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -13,7 +13,7 @@ import QuizDialog from './QuizDialog.jsx';
 import { validateQuizStructure } from '../../shared/quiz.js';
 import useSavedChats, { newChat } from './useSavedChats.js';
 
-function Chatbot({ currentUser = null, onBack, isActive = true }) {
+function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true }) {
   const [input, setInput] = useState('');
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -118,12 +118,19 @@ function Chatbot({ currentUser = null, onBack, isActive = true }) {
     }
   }, [chatFile]);
 
-  const createNewChat = () => {
-    if (!historyReady || isTyping) return;
+  const createNewChat = useCallback(() => {
+    if (!historyReady || isTyping) return false;
     const newChatObj = newChat();
     setChats(prev => [newChatObj, ...prev]);
     setActiveChatId(newChatObj.id);
-  };
+    return true;
+  }, [historyReady, isTyping, setActiveChatId, setChats]);
+
+  const openedVersionRef = useRef(0);
+  useEffect(() => {
+    if (!isActive || !historyReady || !openVersion || openedVersionRef.current === openVersion) return;
+    if (createNewChat()) openedVersionRef.current = openVersion;
+  }, [createNewChat, historyReady, isActive, openVersion]);
 
   const deleteChat = async (id) => {
     if (isTyping) return;

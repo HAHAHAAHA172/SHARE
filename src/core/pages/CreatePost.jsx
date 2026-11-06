@@ -188,7 +188,7 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.doc,.docx,.txt"
+                accept=".pdf,.doc,.docx,.pptx,.txt"
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {

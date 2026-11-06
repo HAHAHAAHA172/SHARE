@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, Check, RefreshCw, ShieldX, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Check, RefreshCw, ShieldCheck, ShieldX, Trash2, UserPlus, Users, X } from 'lucide-react';
 import { apiFetch } from '../../shared/api.js';
 import './Admin.css';
 
@@ -11,6 +11,10 @@ export default function Admin({ onNavigate }) {
   const [message, setMessage] = useState('');
   const [pendingAction, setPendingAction] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [section, setSection] = useState('posts');
+  const [accounts, setAccounts] = useState([]);
+  const [pendingAdmin, setPendingAdmin] = useState(null);
+  const [promoting, setPromoting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -24,6 +28,38 @@ export default function Admin({ onNavigate }) {
     finally { setLoading(false); }
   }, [status]);
   useEffect(() => { const timer = setTimeout(load, 0); return () => clearTimeout(timer); }, [load]);
+
+  const loadAccounts = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const response = await apiFetch('/api/admin/users');
+      const result = await response.json();
+      if (response.status === 401 || response.status === 403) { setNotFound(true); return; }
+      if (!response.ok) throw new Error(result.error || 'Could not load accounts.');
+      setAccounts(result.accounts || []);
+    } catch (cause) { setError(cause.message); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (section !== 'users') return undefined;
+    const timer = setTimeout(loadAccounts, 0);
+    return () => clearTimeout(timer);
+  }, [section, loadAccounts]);
+
+  const promote = async () => {
+    if (!pendingAdmin) return;
+    setPromoting(true); setError(''); setMessage('');
+    try {
+      const response = await apiFetch(`/api/admin/users/${pendingAdmin.id}/admin`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not add this administrator.');
+      setMessage(`${pendingAdmin.name} is now an administrator.`);
+      setPendingAdmin(null);
+      await loadAccounts();
+    } catch (cause) { setError(cause.message); }
+    finally { setPromoting(false); }
+  };
 
   const moderate = async (id, nextStatus, reason = '') => {
     setError(''); setMessage('');
@@ -42,15 +78,19 @@ export default function Admin({ onNavigate }) {
   return <main className="admin-screen">
     <header className="admin-header">
       <button type="button" className="admin-back" onClick={() => onNavigate?.('home')} aria-label="Back to home"><ArrowLeft size={20} /></button>
-      <div><p className="admin-eyebrow">S.H.A.R.E.</p><h1>Post moderation</h1></div>
-      <button type="button" className="admin-refresh" onClick={load} disabled={loading}><RefreshCw size={18} /> Refresh</button>
+      <div><p className="admin-eyebrow">S.H.A.R.E.</p><h1>{section === 'posts' ? 'Post moderation' : 'Manage administrators'}</h1></div>
+      <button type="button" className="admin-refresh" onClick={section === 'posts' ? load : loadAccounts} disabled={loading}><RefreshCw size={18} /> Refresh</button>
     </header>
-    <section className="admin-toolbar" aria-label="Moderation filters">
+    <nav className="admin-section-nav" aria-label="Administration sections">
+      <button type="button" className={section === 'posts' ? 'active' : ''} onClick={() => { setSection('posts'); setMessage(''); setError(''); }}><ShieldCheck size={18} /> Posts</button>
+      <button type="button" className={section === 'users' ? 'active' : ''} onClick={() => { setSection('users'); setMessage(''); setError(''); }}><Users size={18} /> Administrators</button>
+    </nav>
+    {section === 'posts' && <section className="admin-toolbar" aria-label="Moderation filters">
       {['all', 'pending', 'draft', 'published', 'rejected', 'removed'].map(value => <button type="button" key={value} className={status === value ? 'active' : ''} onClick={() => setStatus(value)}>{value[0].toUpperCase() + value.slice(1)}</button>)}
-    </section>
+    </section>}
     {message && <p className="admin-message success" role="status">{message}</p>}
     {error && <p className="admin-message error" role="alert">{error}</p>}
-    {loading ? <p className="admin-empty" role="status">Loading posts…</p> : posts.length === 0 ? <p className="admin-empty">No posts match this filter.</p> : <section className="admin-list">
+    {section === 'posts' && (loading ? <p className="admin-empty" role="status">Loading posts…</p> : posts.length === 0 ? <p className="admin-empty">No posts match this filter.</p> : <section className="admin-list">
       {posts.map(post => <article className="admin-post" key={post.id}>
         <div className="admin-post-meta"><span>{post.author || 'Student'}</span><time>{new Date(post.created_at).toLocaleString()}</time><span className={`admin-status ${post.post_status}`}>{post.post_status}</span></div>
         <h2>{post.title}</h2><p>{post.content || 'No description provided.'}</p>
@@ -61,7 +101,14 @@ export default function Admin({ onNavigate }) {
           {post.post_status !== 'removed' && <button type="button" className="danger" onClick={() => setPendingAction({ id: post.id, status: 'removed', title: post.title })}><Trash2 size={17} /> Remove</button>}
         </div>
       </article>)}
-    </section>}
+    </section>)}
+    {section === 'users' && (loading ? <p className="admin-empty" role="status">Loading accounts…</p> : accounts.length === 0 ? <p className="admin-empty">No accounts are available.</p> : <section className="admin-account-list" aria-label="User accounts">
+      {accounts.map(account => <article className="admin-account" key={account.id}>
+        <div className="admin-account-avatar" aria-hidden="true">{account.name.trim().charAt(0).toUpperCase()}</div>
+        <div className="admin-account-details"><h2>{account.name}</h2><p>{account.email || 'No email address available'}</p></div>
+        {account.role === 'admin' ? <span className="admin-role"><ShieldCheck size={16} /> Administrator</span> : <button type="button" className="admin-promote" disabled={!account.canPromote} onClick={() => setPendingAdmin(account)} title={account.canPromote ? 'Add as administrator' : 'This account needs a profile first'}><UserPlus size={17} /> Add admin</button>}
+      </article>)}
+    </section>)}
     {pendingAction && <div className="admin-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setPendingAction(null); }}>
       <section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-title">
         <button type="button" className="admin-dialog-close" aria-label="Close confirmation" onClick={() => setPendingAction(null)}><X size={18} /></button>
@@ -72,6 +119,17 @@ export default function Admin({ onNavigate }) {
         <div className="admin-dialog-actions">
           <button type="button" className="admin-cancel" onClick={() => setPendingAction(null)}>Cancel</button>
           <button type="button" className={pendingAction.status === 'removed' ? 'danger' : 'reject'} onClick={() => moderate(pendingAction.id, pendingAction.status, pendingAction.reason?.trim())}>{pendingAction.status === 'removed' ? 'Remove post' : 'Reject post'}</button>
+        </div>
+      </section>
+    </div>}
+    {pendingAdmin && <div className="admin-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !promoting) setPendingAdmin(null); }}>
+      <section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-promote-title">
+        <button type="button" className="admin-dialog-close" aria-label="Close confirmation" disabled={promoting} onClick={() => setPendingAdmin(null)}><X size={18} /></button>
+        <h2 id="admin-promote-title">Add administrator?</h2>
+        <p><strong>{pendingAdmin.name}</strong> ({pendingAdmin.email}) will be able to review posts and manage other administrators.</p>
+        <div className="admin-dialog-actions">
+          <button type="button" className="admin-cancel" disabled={promoting} onClick={() => setPendingAdmin(null)}>Cancel</button>
+          <button type="button" className="admin-confirm-promote" disabled={promoting} onClick={promote}>{promoting ? 'Adding…' : 'Add administrator'}</button>
         </div>
       </section>
     </div>}

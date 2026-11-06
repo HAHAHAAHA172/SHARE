@@ -93,6 +93,12 @@ test('uploads enforce MIME/extension/signature and size limits and clean rejecte
   };
   assert.equal((await send('<script>alert(1)</script>', 'text/html', 'attack.html')).status, 400);
   assert.equal((await send('not a real PNG', 'image/png', 'fake.png')).status, 400);
+  assert.equal((await send('not a real presentation', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'fake.pptx')).status, 400);
+  const presentation = Buffer.concat([Buffer.from('504b0304', 'hex'), Buffer.from('ppt/presentation.xml')]);
+  const accepted = await send(presentation, 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'lecture.pptx');
+  assert.equal(accepted.status, 201);
+  const { post } = await accepted.json();
+  assert.equal((await fetch(`${base}/api/posts/${post.id}`, { method: 'DELETE', headers: { Authorization: 'Bearer alice' } })).status, 200);
   assert.equal((await send('x'.repeat(10 * 1024 * 1024 + 1), 'text/plain', 'large.txt')).status, 413);
   assert.deepEqual(await readdir(config.uploadsDir), []);
 });

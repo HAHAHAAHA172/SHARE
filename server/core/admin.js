@@ -12,7 +12,7 @@ function check(result) {
   return result.data;
 }
 
-export function createAdminRouter({ createDataClient }) {
+export function createAdminRouter({ createDataClient, createAdminClient }) {
   const router = Router();
   const clientFor = req => {
     const token = req.get('Authorization')?.slice(7);
@@ -38,6 +38,54 @@ export function createAdminRouter({ createDataClient }) {
       if (requested !== 'all') query = query.eq('post_status', requested);
       const rows = check(await query);
       res.set('Cache-Control', 'no-store').json({ posts: rows || [] });
+    } catch (error) { next(error); }
+  });
+
+  router.get('/users', async (_req, res, next) => {
+    try {
+      const admin = createAdminClient?.();
+      if (!admin) throw httpError(503, 'Administrator account management is not configured.');
+      const users = [];
+      for (let page = 1; page <= 5; page += 1) {
+        const result = await admin.auth.admin.listUsers({ page, perPage: 200 });
+        if (result.error) throw httpError(503, 'Account data is temporarily unavailable.');
+        const batch = result.data?.users || [];
+        users.push(...batch);
+        if (batch.length < 200) break;
+      }
+      const ids = users.map(user => user.id);
+      let profiles = [];
+      if (ids.length) {
+        const result = await admin.from('user_profile').select('user_id,full_name,user_name,role').in('user_id', ids);
+        if (result.error) throw httpError(503, 'Profile data is temporarily unavailable.');
+        profiles = result.data || [];
+      }
+      const byId = new Map(profiles.map(profile => [profile.user_id, profile]));
+      const accounts = users.map(user => {
+        const profile = byId.get(user.id);
+        const email = user.email || '';
+        return {
+          id: user.id,
+          email,
+          name: profile?.full_name || profile?.user_name || email.split('@')[0] || 'Account',
+          role: profile?.role || null,
+          canPromote: Boolean(profile) && profile?.role !== 'admin',
+        };
+      }).sort((a, b) => Number(b.role === 'admin') - Number(a.role === 'admin') || a.name.localeCompare(b.name));
+      res.set('Cache-Control', 'no-store').json({ accounts });
+    } catch (error) { next(error); }
+  });
+
+  router.post('/users/:id/admin', async (req, res, next) => {
+    try {
+      if (!postIdPattern.test(req.params.id)) throw httpError(400, 'Invalid account ID.');
+      const admin = createAdminClient?.();
+      if (!admin) throw httpError(503, 'Administrator account management is not configured.');
+      const now = new Date().toISOString();
+      const result = await admin.from('user_profile').update({ role: 'admin', updated_at: now }).eq('user_id', req.params.id).select('user_id,full_name,user_name,role').maybeSingle();
+      if (result.error) throw httpError(503, 'The account could not be promoted.');
+      if (!result.data) throw httpError(404, 'This account does not have a profile yet.');
+      res.set('Cache-Control', 'no-store').json({ success: true, profile: result.data });
     } catch (error) { next(error); }
   });
 

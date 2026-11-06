@@ -10,21 +10,33 @@ export function readServerConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const publishableKey = env.SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const secretKey = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
   if (supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(supabaseUrl)) throw new Error('Configure a valid HTTPS Supabase project URL.');
   if (publishableKey && !publishableKey.startsWith('sb_publishable_')) throw new Error('Configure a Supabase publishable key, never a secret key.');
+  if (secretKey && secretKey === publishableKey) throw new Error('The Supabase secret key must not be the publishable key.');
   const allowedOrigins = (env.APP_ORIGINS || (production ? '' : 'http://localhost:5173,http://127.0.0.1:5173')).split(',').map(value => value.trim()).filter(Boolean);
   if (allowedOrigins.some(value => { try { const parsed = new URL(value); return parsed.origin !== value || (production && parsed.protocol !== 'https:'); } catch { return true; } })) throw new Error('APP_ORIGINS must contain exact HTTP(S) origins.');
   if (production && (!supabaseUrl || !publishableKey || !allowedOrigins.length || !env.DATA_DIR || !env.UPLOADS_DIR)) {
     throw new Error('Production requires Supabase configuration, APP_ORIGINS, DATA_DIR, and UPLOADS_DIR.');
   }
   return {
-    production, supabaseUrl, publishableKey, allowedOrigins,
+    production, supabaseUrl, publishableKey, secretKey, allowedOrigins,
     storageBucket: env.SUPABASE_STORAGE_BUCKET || 'post-files',
     port: integer(env.PORT, 3001, 1, 65535, 'PORT'),
     trustProxy: integer(env.TRUST_PROXY_HOPS, 0, 0, 3, 'TRUST_PROXY_HOPS'),
     dataDir: env.DATA_DIR || undefined, uploadsDir: env.UPLOADS_DIR || undefined,
     recoveryRedirectTo: env.AUTH_REDIRECT_URL || (allowedOrigins[0] ? `${allowedOrigins[0]}/#/login` : undefined),
   };
+}
+
+// This client bypasses RLS and may use Auth Admin APIs. It must only be used
+// after a server-side administrator check and must never be sent to the browser.
+export function adminClientFactory({ supabaseUrl, secretKey }) {
+  if (!supabaseUrl || !secretKey) return undefined;
+  return () => createClient(supabaseUrl, secretKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { fetch: (url, options = {}) => fetch(url, { ...options, signal: AbortSignal.timeout(20_000) }) },
+  });
 }
 
 export function authClientFactory({ supabaseUrl, publishableKey }) {

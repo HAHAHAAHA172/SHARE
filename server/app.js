@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 const projectDir = fileURLToPath(new URL('../', import.meta.url));
 
 export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir = path.join(projectDir, 'uploads'),
-  tempDir = path.join(tmpdir(), `share-ai-${process.pid}`), ai = null, verifyAccessToken, createAuthClient, createDataClient, storageBucket,
+  tempDir = path.join(tmpdir(), `share-ai-${process.pid}`), ai = null, verifyAccessToken, createAuthClient, createDataClient, createAdminClient, storageBucket,
   production = false, allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'], trustProxy = 0,
   supabaseUrl, recoveryRedirectTo, rateLimits = {}, aiTimeoutMs = 45000, staticDir = path.join(projectDir, 'dist') } = {}) {
   mkdirSync(dataDir, { recursive: true });
@@ -39,7 +39,7 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
   app.get('/api/me', requireAuth, (req, res) => res.set('Cache-Control', 'no-store').json({ user: { id: req.user.id } }));
   app.use('/api/conversations', requireAuth, requestLimiter({ limit: 60, perUser: true }), createConversationsRouter({ createDataClient }));
   if (createDataClient) app.use('/api/profile', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createProfileRouter({ createDataClient, storageBucket: process.env.SUPABASE_AVATAR_BUCKET || 'avatars', uploadsDir }));
-  if (createDataClient) app.use('/api/admin', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createAdminRouter({ createDataClient }));
+  if (createDataClient) app.use('/api/admin', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createAdminRouter({ createDataClient, createAdminClient }));
   if (createDataClient) app.use('/api/notifications', requireAuth, requestLimiter({ limit: 120, windowMs: 60 * 60 * 1000, perUser: true }), createNotificationsRouter({ createDataClient }));
   if (!createDataClient) app.get('/uploads/:filename', requestLimiter({ limit: rateLimits.downloads ?? 60 }), createResourceDownload({ dataDir, uploadsDir }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', name: 'S.H.A.R.E', aiConfigured: Boolean(ai) }));

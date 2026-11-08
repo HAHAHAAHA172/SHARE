@@ -9,7 +9,7 @@ const types = {
   '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   '.pptx': ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
   '.doc': ['application/msword'], '.jpg': ['image/jpeg'], '.jpeg': ['image/jpeg'],
-  '.png': ['image/png'], '.webp': ['image/webp'], '.mp4': ['video/mp4'], '.webm': ['video/webm'],
+  '.png': ['image/png'], '.webp': ['image/webp'], '.avif': ['image/avif'], '.mp4': ['video/mp4'], '.webm': ['video/webm'],
 };
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
@@ -22,7 +22,7 @@ export function createUpload(directory, { kind = 'ai' } = {}) {
     limits: { fileSize: kind === 'avatar' ? 5 * 1024 * 1024 : MAX_UPLOAD_BYTES, files: kind === 'resource' ? 4 : 1, fields: 8, fieldSize: 80 * 1024, parts: kind === 'resource' ? 14 : 10 },
     fileFilter: (_req, file, done) => {
       const extension = path.extname(file.originalname).toLowerCase();
-      const permitted = kind === 'avatar' ? ['.jpg', '.jpeg', '.png', '.webp'].includes(extension) : (kind !== 'ai' || !['.doc', '.pptx', '.mp4', '.webm'].includes(extension));
+      const permitted = kind === 'avatar' ? ['.jpg', '.jpeg', '.png', '.webp', '.avif'].includes(extension) : (kind !== 'ai' || !['.doc', '.pptx', '.mp4', '.webm'].includes(extension));
       if (!permitted || !types[extension]?.includes(file.mimetype)) return done(httpError(400, 'Unsupported attachment format.'));
       done(null, true);
     },
@@ -50,6 +50,7 @@ export async function validateUploadedFile(file, { kind = 'ai' } = {}) {
     '.jpg': () => prefix('ffd8ff'), '.jpeg': () => prefix('ffd8ff'),
     '.png': () => prefix('89504e470d0a1a0a'),
     '.webp': () => head.subarray(0, 4).toString() === 'RIFF' && head.subarray(8, 12).toString() === 'WEBP',
+    '.avif': () => ['avif', 'avis'].includes(head.subarray(8, 12).toString()),
     '.docx': () => prefix('504b0304') && archive.includes(Buffer.from('word/')),
     '.pptx': () => prefix('504b0304') && archive.includes(Buffer.from('ppt/')),
     '.doc': () => prefix('d0cf11e0a1b11ae1'),

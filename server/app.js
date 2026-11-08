@@ -54,7 +54,7 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
   app.use('/api/posts', (req, res, next) => {
     if (['GET', 'HEAD'].includes(req.method)) return req.get('Authorization') ? requireAuth(req, res, next) : next();
     requireAuth(req, res, error => error ? next(error) : writeLimit(req, res, next));
-  }, createSocialRouter({ createDataClient }), createDataClient ? createSupabasePostsRouter({ createDataClient, uploadsDir, storageBucket,
+  }, createSocialRouter({ createDataClient, cache }), createDataClient ? createSupabasePostsRouter({ createDataClient, uploadsDir, storageBucket, cache,
     downloadLimit: requestLimiter({ limit: rateLimits.downloads ?? 60 }), approvalRequired: process.env.POST_APPROVAL_REQUIRED === 'true' }) : createPostsRouter({ dataDir, uploadsDir }));
   app.use(['/api/chat', '/api/quiz'], requestLimiter({ limit: rateLimits.aiIp ?? 60, windowMs: 60 * 60 * 1000 }),
     requireAuth, aiLimit, requestLimiter({ limit: rateLimits.aiGlobal ?? 120, windowMs: 60 * 60 * 1000, shared: true }), limitConcurrentAI());

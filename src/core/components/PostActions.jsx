@@ -4,15 +4,11 @@ import { apiFetch } from '../../shared/api.js';
 import './PostActions.css';
 
 export default function PostActions({ post, currentUser, onComment, isFavorite = false, onToggleFavorite, onSignIn, refresh = false, commentVersion = 0 }) {
-  const [actions, setActions] = useState({ likes: Number(post.likes) || 0, liked: Boolean(post.liked), commentCount: Number(post.commentCount) || 0 });
+  const fromPost = value => ({ likes: Number(value.likes) || 0, liked: Boolean(value.liked), commentCount: Number(value.commentCount) || 0 });
+  const [localActions, setLocalActions] = useState(() => ({ source: post, value: fromPost(post) }));
+  const actions = localActions.source === post ? localActions.value : fromPost(post);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
-  const [snapshot, setSnapshot] = useState(post);
-  // Reconcile refreshed API counts without overwriting an in-flight reaction.
-  if (snapshot !== post && !pending) {
-    setSnapshot(post);
-    setActions({ likes: Number(post.likes) || 0, liked: Boolean(post.liked), commentCount: Number(post.commentCount) || 0 });
-  }
   useEffect(() => {
     if (!refresh) return;
     const controller = new AbortController();
@@ -21,25 +17,25 @@ export default function PostActions({ post, currentUser, onComment, isFavorite =
         const response = await apiFetch(`/api/posts/${encodeURIComponent(post.id)}/actions`, { signal: controller.signal });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Could not load post activity.');
-        if (!controller.signal.aborted) { setActions(result); setError(''); }
+        if (!controller.signal.aborted) { setLocalActions({ source: post, value: result }); setError(''); }
       } catch (failure) { if (!controller.signal.aborted) setError(failure.message || 'Could not load post activity.'); }
     }
     load();
     return () => controller.abort();
-  }, [post.id, currentUser?.id, refresh, commentVersion]);
+  }, [post, currentUser?.id, refresh, commentVersion]);
 
   async function toggleLike() {
     if (!currentUser) { onSignIn?.(); return; }
     if (pending) return;
     const previous = actions;
     setPending(true); setError('');
-    setActions({ ...actions, liked: !actions.liked, likes: Math.max(0, actions.likes + (actions.liked ? -1 : 1)) });
+    setLocalActions({ source: post, value: { ...actions, liked: !actions.liked, likes: Math.max(0, actions.likes + (actions.liked ? -1 : 1)) } });
     try {
       const response = await apiFetch(`/api/posts/${encodeURIComponent(post.id)}/like`, { method: previous.liked ? 'DELETE' : 'POST' });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Could not update your reaction.');
-      setActions(result);
-    } catch (failure) { setActions(previous); setError(failure.message || 'Could not update your reaction.'); }
+      setLocalActions({ source: post, value: result });
+    } catch (failure) { setLocalActions({ source: post, value: previous }); setError(failure.message || 'Could not update your reaction.'); }
     finally { setPending(false); }
   }
 

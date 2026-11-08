@@ -17,18 +17,32 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
   const [courses, setCourses] = useState([]);
 
   useEffect(() => {
-    if (!currentUser) return;
-    apiFetch('/api/profile').then(response => response.json().then(result => {
-      if (!response.ok) throw new Error(result.error || 'Could not load your profile.');
-      setProfile(result.profile);
-      setDraft({ user_name: result.profile.user_name || '', full_name: result.profile.full_name || '', role: result.profile.role || 'student', avatar_url: result.profile.avatar_url || '', year_level: result.profile.year_level || '', course_id: result.profile.course_id || '' });
-    })).catch(error => setProfileError(error.message));
-    apiFetch('/api/profile/courses').then(async response => {
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || 'Could not load courses.');
-      if (!Array.isArray(result.courses)) throw new Error('The server returned an invalid course list.');
-      setCourses(result.courses);
-    }).catch(error => setProfileError(error.message));
+    if (!currentUser) return undefined;
+    const controller = new AbortController();
+    async function loadSettings() {
+      try {
+        const [profileResponse, coursesResponse] = await Promise.all([
+          apiFetch('/api/profile', { signal: controller.signal }),
+          apiFetch('/api/profile/courses', { signal: controller.signal })
+        ]);
+        const [profileResult, coursesResult] = await Promise.all([
+          profileResponse.json().catch(() => ({})),
+          coursesResponse.json().catch(() => ({}))
+        ]);
+        if (!profileResponse.ok) throw new Error(profileResult.error || 'Could not load your profile.');
+        if (!coursesResponse.ok) throw new Error(coursesResult.error || 'Could not load courses.');
+        if (!Array.isArray(coursesResult.courses)) throw new Error('The server returned an invalid course list.');
+        if (controller.signal.aborted) return;
+        setProfile(profileResult.profile);
+        setDraft({ user_name: profileResult.profile.user_name || '', full_name: profileResult.profile.full_name || '', role: profileResult.profile.role || 'student', avatar_url: profileResult.profile.avatar_url || '', year_level: profileResult.profile.year_level || '', course_id: profileResult.profile.course_id || '' });
+        setCourses(coursesResult.courses);
+        setProfileError('');
+      } catch (error) {
+        if (!controller.signal.aborted) setProfileError(error.message || 'Could not load settings.');
+      }
+    }
+    void loadSettings();
+    return () => controller.abort();
   }, [currentUser]);
 
   const userName = profile?.full_name || profile?.user_name || currentUser?.name || 'Guest';
@@ -99,7 +113,7 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
             <label>Role<select value={draft.role} onChange={event => setDraft({ ...draft, role: event.target.value })}><option value="student">Student</option><option value="instructor">Instructor</option></select></label>
             <label>Year level<select value={draft.year_level} onChange={event => setDraft({ ...draft, year_level: event.target.value })} required><option value="">Select year level</option><option value="1st year">1st year</option><option value="2nd year">2nd year</option><option value="3rd year">3rd year</option><option value="4th year">4th year</option></select></label>
             <label>Course<select value={draft.course_id} onChange={event => setDraft({ ...draft, course_id: event.target.value })} required><option value="">Select course</option>{courses.map(course => <option key={course.course_id} value={course.course_id}>{course.course_name}</option>)}</select></label>
-            <label>Profile photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadAvatar} disabled={uploadingAvatar} /> <small>{uploadingAvatar ? 'Uploading…' : 'JPG, PNG, or WebP up to 5 MB'}</small></label>
+            <label>Profile photo<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={uploadAvatar} disabled={uploadingAvatar} /> <small>{uploadingAvatar ? 'Uploading…' : 'JPG, PNG, WebP, or AVIF up to 5 MB'}</small></label>
             <button className="settings-save-profile" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
           </form>}
 
@@ -142,7 +156,7 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
             >
               <div className="settings-row-left">
                 <Star size={20} color="#ffffff" strokeWidth={1.8} />
-                <span>Favorites</span>
+                <span>Saved resources</span>
               </div>
               <ChevronRight size={18} color="#888" strokeWidth={2} />
             </button>
@@ -162,4 +176,3 @@ export default function Settings({ onNavigate, currentUser, onLogout }) {
     </div>
   );
 }
-

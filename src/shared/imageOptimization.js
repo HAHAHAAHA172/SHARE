@@ -18,10 +18,13 @@ export async function optimizeImageFile(file, { maxDimension = 1920, quality = 0
     const context = canvas.getContext('2d', { alpha: false });
     if (!context) return file;
     context.drawImage(bitmap, 0, 0, width, height);
-    const converted = await canvasBlob(canvas, 'image/webp', quality);
-    if (!converted || converted.type !== 'image/webp' || converted.size >= file.size) return file;
+    const avif = await canvasBlob(canvas, 'image/avif', quality);
+    const webp = await canvasBlob(canvas, 'image/webp', quality);
+    const converted = avif?.type === 'image/avif' && avif.size < file.size && (!webp || avif.size <= webp.size) ? avif : webp;
+    if (!converted || !['image/avif', 'image/webp'].includes(converted.type) || converted.size >= file.size) return file;
     const base = file.name.replace(/\.[^.]+$/, '') || 'image';
-    return new File([converted], `${base}.webp`, { type: 'image/webp', lastModified: file.lastModified });
+    const extension = converted.type === 'image/avif' ? 'avif' : 'webp';
+    return new File([converted], `${base}.${extension}`, { type: converted.type, lastModified: file.lastModified });
   } catch {
     return file;
   } finally {

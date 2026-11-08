@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Check, RefreshCw, ShieldCheck, ShieldX, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import { apiFetch } from '../../shared/api.js';
 import './Admin.css';
@@ -16,30 +16,59 @@ export default function Admin({ onNavigate }) {
   const [pendingAdmin, setPendingAdmin] = useState(null);
   const [promoting, setPromoting] = useState(false);
   const [removingAdmin, setRemovingAdmin] = useState(null);
+  const postsRequestRef = useRef(null);
+  const accountsRequestRef = useRef(null);
 
   const load = useCallback(async () => {
+    postsRequestRef.current?.abort();
+    const controller = new AbortController();
+    postsRequestRef.current = controller;
     setLoading(true); setError('');
     try {
-      const response = await apiFetch(`/api/admin/posts?status=${encodeURIComponent(status)}`);
+      const response = await apiFetch(`/api/admin/posts?status=${encodeURIComponent(status)}`, { signal: controller.signal });
       const result = await response.json();
+      if (controller.signal.aborted) return;
       if (response.status === 401 || response.status === 403) { setNotFound(true); return; }
       if (!response.ok) throw new Error(result.error || 'Could not load moderation data.');
       setPosts(result.posts || []);
-    } catch (cause) { setError(cause.message); }
-    finally { setLoading(false); }
+    } catch (cause) { if (!controller.signal.aborted) setError(cause.message); }
+    finally {
+      if (postsRequestRef.current === controller) {
+        postsRequestRef.current = null;
+        setLoading(false);
+      }
+    }
   }, [status]);
   useEffect(() => { const timer = setTimeout(load, 0); return () => clearTimeout(timer); }, [load]);
 
   const loadAccounts = useCallback(async () => {
+    accountsRequestRef.current?.abort();
+    const controller = new AbortController();
+    accountsRequestRef.current = controller;
     setLoading(true); setError('');
     try {
-      const response = await apiFetch('/api/admin/users');
+      const response = await apiFetch('/api/admin/users', { signal: controller.signal });
       const result = await response.json();
+      if (controller.signal.aborted) return;
       if (response.status === 401 || response.status === 403) { setNotFound(true); return; }
       if (!response.ok) throw new Error(result.error || 'Could not load accounts.');
       setAccounts(result.accounts || []);
-    } catch (cause) { setError(cause.message); }
-    finally { setLoading(false); }
+    } catch (cause) { if (!controller.signal.aborted) setError(cause.message); }
+    finally {
+      if (accountsRequestRef.current === controller) {
+        accountsRequestRef.current = null;
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => () => {
+    const postsRequest = postsRequestRef.current;
+    const accountsRequest = accountsRequestRef.current;
+    postsRequestRef.current = null;
+    accountsRequestRef.current = null;
+    postsRequest?.abort();
+    accountsRequest?.abort();
   }, []);
 
   useEffect(() => {

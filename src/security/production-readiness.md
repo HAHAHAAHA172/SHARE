@@ -15,6 +15,7 @@ Server-side token verification, authorization checks, input/file validation, rat
 
 ## External checks still required
 
+- Complete the documented two-session Realtime deployment check for posts, likes, and comments; implementation is enabled, but multi-session behavior has not been verified.
 - Run `database/verify.sql` in the Supabase SQL Editor and confirm RLS, policies, and grants for every exposed table.
 - Complete a real test-account login, signup confirmation, logout, and password-recovery flow using the configured Supabase redirect URLs.
 - Run the final production-host smoke test with HTTPS origins, persistent storage, and the deployed reverse-proxy configuration.

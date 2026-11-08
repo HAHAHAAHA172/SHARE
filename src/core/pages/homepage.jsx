@@ -1,74 +1,14 @@
-import { Component, lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, useDeferredValue } from 'react';
 import './homepage.css';
 import botLogo from '../assets/share_logo1.png';
-import { apiFetch, apiUrl } from '../../shared/api.js';
 import { supabase } from '../../security/client/auth.js';
-import PostActions from '../components/PostActions.jsx';
+import NotificationPopover from '../components/NotificationPopover.jsx';
+import PostCard from '../components/PostCard.jsx';
+import { AttachmentModalContent } from '../components/AttachmentPreview.jsx';
+import useNotifications from '../hooks/useNotifications.js';
+import useFeed from '../hooks/useFeed.js';
 import { watchFeedUpdates } from '../feedUpdates.js';
-import { Search, Menu, Home, Sparkles, Bell, User, Plus, X, FileText, BookOpen, CheckCircle, Clock, Settings, Star } from 'lucide-react';
-
-// Custom exact PDF document icon matching the screenshot
-function PdfIcon({ size = 30 }) {
-  return (
-    <svg
-      width={size}
-      height={Math.round(size * 1.15)}
-      viewBox="0 0 34 38"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ display: 'block', flexShrink: 0 }}
-    >
-      <path d="M3 5C3 2.79086 4.79086 1 7 1H21.5L31 10.5V33C31 35.2091 29.2091 37 27 37H7C4.79086 37 3 35.2091 3 33V5Z" fill="#141416" />
-      <path d="M21 1V10.5H30.5L21 1Z" fill="#2E2E33" />
-      <path
-        d="M12 24.5C10.5 25.1 8.8 25.7 7.6 25.8C6.9 25.9 6.2 25.4 6.1 24.7C6.0 23.9 6.5 23.2 7.2 22.9C8.8 22.3 10.9 21.4 12.5 19.9C13.5 17.1 14.1 14.1 14.5 12.4C14.7 11.5 15.5 10.9 16.4 11.0C17.2 11.1 17.8 11.8 17.7 12.7C17.4 14.9 16.7 17.8 15.3 20.2C17.5 21.2 20.5 21.9 23.2 22.1C24.1 22.2 24.7 22.9 24.6 23.8C24.5 24.6 23.7 25.2 22.9 25.1C20.3 24.8 17.3 24.0 14.9 22.8C13.5 23.8 12.5 24.3 12 24.5Z"
-        stroke="#FFFFFF"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-const inlineImageCache = new Map();
-const PdfPreview = lazy(() => import('../components/PdfPreview.jsx'));
-const PptxPreview = lazy(() => import('../components/PptxPreview.jsx'));
-const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-const isPptxFile = (file) => file?.mimetype === PPTX_MIME || file?.originalname?.toLowerCase().endsWith('.pptx');
-class PdfPreviewErrorBoundary extends Component {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  render() {
-    if (this.state.failed) return <div className="share-document-preview"><FileText size={48} /><span>PDF preview unavailable</span><a href={this.props.src} target="_blank" rel="noopener noreferrer">Open PDF in a new tab</a></div>;
-    return this.props.children;
-  }
-}
-const PdfPreviewBoundary = ({ src, large = false }) => <PdfPreviewErrorBoundary src={src}><Suspense fallback={<span className="share-media-loading">Loading PDF preview...</span>}><PdfPreview src={src} large={large} /></Suspense></PdfPreviewErrorBoundary>;
-const PptxPreviewBoundary = ({ src, filename, large = false }) => <Suspense fallback={<span className="share-media-loading">Loading PowerPoint preview...</span>}><PptxPreview src={src} filename={filename} large={large} /></Suspense>;
-function InlineImage({ src, alt, onError }) {
-  const [resolved, setResolved] = useState('');
-  useEffect(() => {
-    let active = true;
-    const cached = inlineImageCache.get(src);
-    const request = cached || apiFetch(src).then(response => {
-      if (!response.ok) throw new Error('Preview unavailable');
-      return response.blob();
-    }).then(blob => {
-      const url = URL.createObjectURL(blob);
-      inlineImageCache.set(src, url);
-      return url;
-    });
-    if (!cached) inlineImageCache.set(src, request);
-    Promise.resolve(request).then(url => {
-      if (!active) return;
-      setResolved(url);
-    }).catch(() => { if (active) onError?.(); });
-    return () => { active = false; };
-  }, [src, onError]);
-  if (!resolved) return <span className="share-media-loading">Loading preview…</span>;
-  return <img className="share-feed-media" src={resolved} alt={alt} loading="lazy" decoding="async" />;
-}
+import { Search, Menu, Home, Sparkles, Bell, User, Plus, X, FileText, BookOpen, Settings, Star } from 'lucide-react';
 
 export default function HomePage({
   onNavigateToPedro,
@@ -82,17 +22,14 @@ export default function HomePage({
   onToggleFavorite
 }) {
   const localPosts = posts;
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
   const [retry, setRetry] = useState(0);
-  const hasLoadedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All');
+  const deferredSearchQuery = useDeferredValue(searchQuery.trim());
 
   // Modals and Drawers
   const [showDrawer, setShowDrawer] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
   const [showProfile, setShowProfile] = useState(false);
   const [showViewAllModal, setShowViewAllModal] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
@@ -100,20 +37,30 @@ export default function HomePage({
   const lastScrollYRef = useRef(0);
   const collapsedAtRef = useRef(0);
   const postsScrollRef = useRef(null);
-  const notificationsAnchorRef = useRef(null);
   const notificationsButtonRef = useRef(null);
-  const notificationsPanelRef = useRef(null);
+  const compactNotificationsButtonRef = useRef(null);
   const feedEndRef = useRef(null);
-  const [visiblePostCount, setVisiblePostCount] = useState(12);
+  const toastTimerRef = useRef(null);
 
   // User Profile
   const userName = currentUser?.name || 'Student';
   const [toastMessage, setToastMessage] = useState('');
+  const { notifications, loading: notificationsLoading, error: notificationsError, refresh: refreshNotifications } = useNotifications(currentUser);
+  const { loading, loadingMore, error: loadError, total, hasMore, loadMore } = useFeed({
+    currentUserId: currentUser?.id,
+    query: deferredSearchQuery,
+    subject: selectedSubject,
+    refreshVersion: retry,
+    setPosts
+  });
+  const closeNotifications = useCallback(() => setShowNotifications(false), []);
 
-  const showToast = (msg) => {
+  const showToast = useCallback((msg) => {
+    clearTimeout(toastTimerRef.current);
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3000);
-  };
+    toastTimerRef.current = setTimeout(() => setToastMessage(''), 3000);
+  }, []);
+  useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
   const handleFeedScroll = (event) => {
     const current = event.currentTarget.scrollTop;
@@ -122,34 +69,6 @@ export default function HomePage({
     else if (current >= 72 && !headerCollapsed) { collapsedAtRef.current = Date.now(); setHeaderCollapsed(true); }
     lastScrollYRef.current = current;
   };
-
-  // Fetch posts on mount
-  useEffect(() => {
-    const controller = new AbortController();
-    const fetchPosts = async () => {
-      try {
-        if (!hasLoadedRef.current) setLoading(true);
-        setLoadError('');
-        const res = await apiFetch('/api/posts', { signal: controller.signal });
-        if (!res.ok) throw new Error('Could not load posts. Please try again.');
-        if (res.ok) {
-          const data = await res.json();
-          const fetched = data.posts || [];
-          if (!controller.signal.aborted && setPosts) {
-            hasLoadedRef.current = true;
-            setPosts([...new Map(fetched.map(post => [post.id, post])).values()]);
-          }
-        }
-      } catch (err) {
-        if (!controller.signal.aborted) setLoadError(err.message || 'Could not reach the server. Please try again.');
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
-
-    fetchPosts();
-    return () => controller.abort();
-  }, [retry, setPosts, currentUser?.id]);
 
   useEffect(() => {
     return watchFeedUpdates({ client: supabase, refresh: () => setRetry(value => value + 1) });
@@ -180,46 +99,9 @@ export default function HomePage({
   }, [showDrawer, showViewAllModal, showProfile]);
 
   useEffect(() => {
-    if (!showNotifications) return;
-    const panel = notificationsPanelRef.current;
-    const trigger = notificationsButtonRef.current;
-    panel?.querySelector('button')?.focus();
-    const onPointerDown = event => {
-      if (!notificationsAnchorRef.current?.contains(event.target)) setShowNotifications(false);
-    };
-    const onKeyDown = event => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setShowNotifications(false);
-        trigger?.focus();
-      }
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-      if (panel?.contains(document.activeElement)) trigger?.focus();
-    };
-  }, [showNotifications]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    let active = true;
-    apiFetch('/api/notifications').then(async response => {
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || 'Could not load notifications.');
-      if (active) setNotifications(Array.isArray(result.notifications) ? result.notifications : []);
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [currentUser]);
-
-  useEffect(() => {
     if (!currentUser || !showNotifications) return;
-    apiFetch('/api/notifications').then(response => response.json().then(result => {
-      if (response.ok && Array.isArray(result.notifications)) setNotifications(result.notifications);
-    })).catch(() => {});
-  }, [currentUser, showNotifications]);
+    void refreshNotifications();
+  }, [currentUser, showNotifications, refreshNotifications]);
 
   // Filter posts by search query and category
   const filteredPosts = useMemo(() => localPosts.filter(post => {
@@ -235,17 +117,17 @@ export default function HomePage({
 
     return matchesSubject && matchesSearch;
   }), [localPosts, searchQuery, selectedSubject]);
-  const visiblePosts = filteredPosts.slice(0, visiblePostCount);
+  const visiblePosts = filteredPosts;
 
   useEffect(() => {
     const target = feedEndRef.current;
-    if (!target || visiblePostCount >= filteredPosts.length) return undefined;
+    if (!target || !hasMore || loadingMore) return undefined;
     const observer = new IntersectionObserver(entries => {
-      if (entries.some(entry => entry.isIntersecting)) setVisiblePostCount(count => Math.min(count + 12, filteredPosts.length));
+      if (entries.some(entry => entry.isIntersecting)) void loadMore();
     }, { root: postsScrollRef.current, rootMargin: '500px 0px' });
     observer.observe(target);
     return () => observer.disconnect();
-  }, [filteredPosts.length, visiblePostCount]);
+  }, [hasMore, loadMore, loadingMore]);
 
   const subjects = ['All', 'DSA', 'OOP', 'Discrete Math', 'OS', 'Syllabi', 'General'];
 
@@ -271,7 +153,7 @@ export default function HomePage({
         <header className={`share-purple-header ${headerCollapsed ? 'is-collapsed' : ''} ${showNotifications && !headerCollapsed ? 'notifications-open' : ''}`}>
           {/* Top Row: Notifications, Brand/Title (on desktop), and Profile */}
           <div className="share-top-row">
-            <div className="share-notifications-anchor" ref={notificationsAnchorRef}>
+            <div className="share-notifications-anchor">
               <button
                 ref={notificationsButtonRef}
                 className="share-icon-btn"
@@ -279,22 +161,14 @@ export default function HomePage({
                 title="Notifications"
                 aria-label="Notifications"
                 aria-expanded={showNotifications}
-                aria-controls={showNotifications ? 'share-notifications-panel' : undefined}
+                aria-controls={showNotifications && !headerCollapsed ? 'share-notifications-expanded' : undefined}
                 aria-haspopup="dialog"
               >
                 <Bell size={24} color="#FFFFFF" strokeWidth={2} />
               </button>
               {showNotifications && !headerCollapsed && (
-                <div className="share-notifications-popover" id="share-notifications-panel" ref={notificationsPanelRef} role="dialog" aria-labelledby="share-notifications-title">
-                  <div className="share-popup-header">
-                    <h4 id="share-notifications-title">Notifications</h4>
-                    <button aria-label="Close notifications" onClick={() => { setShowNotifications(false); notificationsButtonRef.current?.focus(); }}><X size={16} /></button>
-                  </div>
-                  {notifications.length ? notifications.slice(0, 8).map(item => <div className={`share-popup-item ${item.read_at ? '' : 'is-unread'}`} key={item.notification_id}>
-                    {item.type === 'like' ? <CheckCircle size={18} color="#e9365b" /> : <Clock size={18} color="#9A89C6" />}
-                    <div><strong>{item.title}</strong><p>{item.body}</p><small>{new Date(item.created_at).toLocaleString()}</small></div>
-                  </div>) : <div className="share-popup-item"><Clock size={18} color="#9A89C6" /><div><strong>No notifications yet</strong><p>Updates about your posts will appear here.</p></div></div>}
-                </div>
+                <NotificationPopover id="share-notifications-expanded" notifications={notifications} loading={notificationsLoading} error={notificationsError}
+                  onRetry={() => refreshNotifications({ force: true })} onClose={closeNotifications} triggerRef={notificationsButtonRef} />
               )}
             </div>
 
@@ -355,11 +229,9 @@ export default function HomePage({
 
         <div className={`share-compact-header ${headerCollapsed ? 'is-visible' : ''}`} aria-hidden={!headerCollapsed}>
           <div className="share-compact-notifications-anchor">
-            <button type="button" className="share-compact-control" aria-label="Notifications" tabIndex={headerCollapsed ? 0 : -1} onClick={() => { setShowProfile(false); setShowNotifications(open => !open); }}><Bell size={19} /></button>
-            {showNotifications && headerCollapsed && <div className="share-notifications-popover share-compact-notifications" id="share-notifications-panel" ref={notificationsPanelRef} role="dialog" aria-labelledby="share-notifications-title">
-              <div className="share-popup-header"><h4 id="share-notifications-title">Notifications</h4><button aria-label="Close notifications" onClick={() => setShowNotifications(false)}><X size={16} /></button></div>
-              {notifications.length ? notifications.slice(0, 8).map(item => <div className={`share-popup-item ${item.read_at ? '' : 'is-unread'}`} key={item.notification_id}><Clock size={18} color="#9A89C6" /><div><strong>{item.title}</strong><p>{item.body}</p><small>{new Date(item.created_at).toLocaleString()}</small></div></div>) : <div className="share-popup-item"><Clock size={18} color="#9A89C6" /><div><strong>No notifications yet</strong><p>Updates about your posts will appear here.</p></div></div>}
-            </div>}
+            <button ref={compactNotificationsButtonRef} type="button" className="share-compact-control" aria-label="Notifications" aria-expanded={showNotifications && headerCollapsed} aria-controls={showNotifications && headerCollapsed ? 'share-notifications-compact' : undefined} tabIndex={headerCollapsed ? 0 : -1} onClick={() => { setShowProfile(false); setShowNotifications(open => !open); }}><Bell size={19} /></button>
+            {showNotifications && headerCollapsed && <NotificationPopover compact id="share-notifications-compact" notifications={notifications} loading={notificationsLoading} error={notificationsError}
+              onRetry={() => refreshNotifications({ force: true })} onClose={closeNotifications} triggerRef={compactNotificationsButtonRef} />}
           </div>
           <label className="share-compact-search"><Search size={16} /><input aria-label="Search posts" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search" tabIndex={headerCollapsed ? 0 : -1} /></label>
           <button type="button" className="share-compact-control" aria-label="Profile" tabIndex={headerCollapsed ? 0 : -1} onClick={() => setShowProfile(open => !open)}><User size={19} /></button>
@@ -372,7 +244,7 @@ export default function HomePage({
             <div className="share-headline-wrap">
               <h2 className="share-posts-headline">POSTS</h2>
               <span className="share-posts-count-badge">
-                {filteredPosts.length} {filteredPosts.length === 1 ? 'post' : 'posts'}
+                {total} {total === 1 ? 'post' : 'posts'}
               </span>
             </div>
 
@@ -417,36 +289,19 @@ export default function HomePage({
               /* Display user posts in responsive cards grid */
               <div className="share-posts-grid">
                 {visiblePosts.map((item) => (
-                  <article key={item.id} className="share-post-card">
-                    <div className="share-card-open" role="button" tabIndex={0} onClick={() => handlePostClick(item)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handlePostClick(item); } }}>
-                    <div className="share-card-content">
-                      <div className="share-feed-author-row">
-                        <div className="share-feed-avatar"><User size={18} /></div>
-                        <strong>{item.author || 'Student'}</strong>
-                        <span>{item.createdAt ? new Date(item.createdAt).toLocaleString() : 'Recently'}</span>
-                      </div>
-                      <h3 className="share-card-title">{item.title}</h3>
-                      <p className="share-card-desc">{item.description || 'Open this shared resource.'}</p>
-                      {item.file && (() => {
-                        const fileUrl = apiUrl(item.file.url);
-                        const type = item.file.mimetype || '';
-                        if (type.startsWith('image/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><InlineImage src={fileUrl} alt={item.file.originalname || 'Post attachment'} onError={() => {}} /><span className="share-media-fallback">Preview unavailable — open the attachment</span></button>;
-                        if (type.startsWith('video/')) return <button type="button" className="share-feed-media-button" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><video className="share-feed-media" src={fileUrl} preload="metadata" muted /></button>;
-                        if (type === 'application/pdf') return <button type="button" className="share-feed-file-preview share-pdf-card" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfPreviewBoundary src={fileUrl} /><span>{item.file.originalname || 'Open PDF'}</span></button>;
-                        if (isPptxFile(item.file)) return <button type="button" className="share-feed-file-preview share-pptx-card" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PptxPreviewBoundary src={fileUrl} filename={item.file.originalname} /><span>{item.file.originalname || 'Open PowerPoint'}</span></button>;
-                        return <button type="button" className="share-feed-file-preview" onClick={(event) => { event.stopPropagation(); setPreviewFile({ ...item.file, url: fileUrl }); }}><PdfIcon size={28} /><span>{item.file.originalname || 'Open attachment'}</span></button>;
-                      })()}
-                      <div className="share-card-meta">
-                        {item.subject && <span className="share-card-tag">{item.subject}</span>}
-                        <span className="share-card-author">by {item.author || 'Student'}</span>
-                      </div>
-                    </div>
-
-                    </div>
-                    <PostActions key={`${item.id}:${currentUser?.id || 'guest'}`} post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} isFavorite={favorites.some(saved => saved.id === item.id)} onToggleFavorite={onToggleFavorite} onSignIn={() => onNavigate?.('login')} />
-                  </article>
+                  <PostCard
+                    key={item.id}
+                    post={item}
+                    currentUser={currentUser}
+                    saved={favorites.some((saved) => saved.id === item.id)}
+                    onOpen={handlePostClick}
+                    onPreview={setPreviewFile}
+                    onToggleSaved={onToggleFavorite}
+                    onSignIn={() => onNavigate?.('login')}
+                  />
                 ))}
-                {visiblePostCount < filteredPosts.length && <div ref={feedEndRef} className="share-feed-sentinel" aria-hidden="true" />}
+                {hasMore && <div ref={feedEndRef} className="share-feed-sentinel" aria-hidden="true" />}
+                {loadingMore && <div className="share-feed-loading-more" role="status">Loading more posts…</div>}
               </div>
             ) : (
               /* Empty State (Exact requirement: users haven't posted yet) */
@@ -697,7 +552,7 @@ export default function HomePage({
           <div className="share-file-preview-backdrop" role="dialog" aria-modal="true" aria-label="Attachment preview" onClick={() => setPreviewFile(null)}>
             <div className="share-file-preview-modal" onClick={(event) => event.stopPropagation()}>
               <button type="button" className="share-close-btn" aria-label="Close preview" onClick={() => setPreviewFile(null)}><X size={20} /></button>
-              {previewFile.mimetype?.startsWith('image/') ? <InlineImage src={previewFile.url} alt={previewFile.originalname || 'Attachment'} /> : previewFile.mimetype?.startsWith('video/') ? <video src={previewFile.url} controls autoPlay /> : previewFile.mimetype === 'application/pdf' ? <PdfPreviewBoundary src={previewFile.url} large /> : isPptxFile(previewFile) ? <PptxPreviewBoundary src={previewFile.url} filename={previewFile.originalname} large /> : <div className="share-document-preview"><FileText size={48} /><h3>{previewFile.originalname || 'Document'}</h3><a href={previewFile.url} target="_blank" rel="noopener noreferrer" download={previewFile.originalname}>Open document in a new tab</a></div>}
+              <AttachmentModalContent file={previewFile} />
             </div>
           </div>
         )}

@@ -1,4 +1,12 @@
-export default function ThinkingIndicator({ craftingQuiz = false, elapsed }) {
+import { useEffect, useState } from 'react';
+
+export default function ThinkingIndicator({ craftingQuiz = false }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const startedAt = Date.now();
+    const timer = setInterval(() => setElapsed((Date.now() - startedAt) / 1000), 250);
+    return () => clearInterval(timer);
+  }, []);
   return (
     <div className="pedro-thinking" role="status" aria-label={craftingQuiz ? 'PEDRO is crafting your quiz' : 'PEDRO is thinking'}>
       <span className="pedro-thinking-dots" aria-hidden="true">

@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: s-h-a-r-e
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ORIGINS
+        value: https://s-h-a-r-e.onrender.com
+      - key: DATA_DIR
+        value: /tmp/share-data
+      - key: UPLOADS_DIR
+        value: /tmp/share-uploads
+      - key: VITE_API_BASE_URL
+        value: ""
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

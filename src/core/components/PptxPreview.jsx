@@ -12,10 +12,22 @@ import { apiFetch } from '../../shared/api.js';
 setWasmSource(wasmUrl);
 
 const presentationCache = new Map();
+const PRESENTATION_CACHE_LIMIT = 12;
+
+function rememberPresentation(src, value) {
+  presentationCache.delete(src);
+  presentationCache.set(src, value);
+  while (presentationCache.size > PRESENTATION_CACHE_LIMIT) {
+    presentationCache.delete(presentationCache.keys().next().value);
+  }
+}
 
 function loadPresentation(src) {
   const cached = presentationCache.get(src);
-  if (cached) return Promise.resolve(cached);
+  if (cached) {
+    rememberPresentation(src, cached);
+    return Promise.resolve(cached);
+  }
 
   const request = apiFetch(src)
     .then((response) => {
@@ -23,7 +35,7 @@ function loadPresentation(src) {
       return response.blob();
     })
     .then((blob) => {
-      presentationCache.set(src, blob);
+      rememberPresentation(src, blob);
       return blob;
     })
     .catch((error) => {
@@ -31,7 +43,7 @@ function loadPresentation(src) {
       throw error;
     });
 
-  presentationCache.set(src, request);
+  rememberPresentation(src, request);
   return request;
 }
 

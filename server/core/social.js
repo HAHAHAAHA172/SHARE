@@ -15,8 +15,9 @@ function data(result) {
   return result.data;
 }
 
-export function createSocialRouter({ createDataClient }) {
+export function createSocialRouter({ createDataClient, cache = null }) {
   const router = Router();
+  const invalidatePosts = () => cache?.set('share:posts:version', randomUUID(), 3600);
   const clientFor = req => {
     if (!createDataClient) throw httpError(503, 'Discussion is temporarily unavailable. Please try again.');
     const client = createDataClient(req.user ? req.get('Authorization').slice(7) : undefined);
@@ -45,12 +46,14 @@ export function createSocialRouter({ createDataClient }) {
     const id = uuid(req.params.id), client = clientFor(req);
     await publishedPost(client, id);
     data(await client.from('likes').upsert({ post_id: id, user_id: req.user.id, created_at: new Date().toISOString() }, { onConflict: 'post_id,user_id', ignoreDuplicates: true }));
+    await invalidatePosts();
     res.json({ success: true, ...await actions(client, id, req.user.id) });
   });
   router.delete('/:id/like', async (req, res) => {
     const id = uuid(req.params.id), client = clientFor(req);
     await publishedPost(client, id);
     data(await client.from('likes').delete().eq('post_id', id).eq('user_id', req.user.id));
+    await invalidatePosts();
     res.json({ success: true, ...await actions(client, id, req.user.id) });
   });
   router.get('/:id/comments', async (req, res) => {
@@ -75,6 +78,7 @@ export function createSocialRouter({ createDataClient }) {
     const now = new Date().toISOString();
     const row = { comment_id: randomUUID(), post_id: id, user_id: req.user.id, content, status: 'published', created_at: now, updated_at: now, parent_comment_id: null };
     data(await client.from('comments').insert(row));
+    await invalidatePosts();
     const suppliedName = req.user.user_metadata?.display_name;
     const author = text(typeof suppliedName === 'string' ? suppliedName.slice(0, 80) : undefined, { max: 80, fallback: 'Student' });
     res.status(201).json({ success: true, comment: { id: row.comment_id, ownerId: row.user_id, text: content, author, createdAt: now, parentId: null } });
@@ -88,6 +92,7 @@ export function createSocialRouter({ createDataClient }) {
     // Preserve possible reply references instead of relying on an unknown FK
     // deletion action. RLS hides deleted comments from all public reads.
     data(await client.from('comments').update({ status: 'deleted', updated_at: new Date().toISOString() }).eq('comment_id', commentId).eq('post_id', id).eq('user_id', req.user.id));
+    await invalidatePosts();
     res.json({ success: true, message: 'Comment deleted.' });
   });
   return router;

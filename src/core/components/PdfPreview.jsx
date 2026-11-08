@@ -10,6 +10,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export default function PdfPreview({ src, large = false }) {
   const [pages, setPages] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [failed, setFailed] = useState(false);
   const [resolved, setResolved] = useState('');
   useEffect(() => {
@@ -30,14 +31,18 @@ export default function PdfPreview({ src, large = false }) {
   if (failed) return <div className="share-document-preview"><FileText size={48} /><span>PDF preview unavailable</span><a href={src} target="_blank" rel="noopener noreferrer">Open PDF in a new tab</a></div>;
   if (!resolved) return <span className="share-media-loading">Loading PDF preview...</span>;
   return <div className={`share-pdf-viewer ${large ? 'is-large' : 'is-card'}`}>
-    <div className="share-pdf-toolbar"><a href={resolved} download="document.pdf">Download PDF</a></div>
+    <div className="share-pdf-toolbar">
+      {large && pages > 1 && <div className="share-pdf-pagination" role="group" aria-label="PDF pages">
+        <button type="button" onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1}>Previous</button>
+        <span>Page {currentPage} of {pages}</span>
+        <button type="button" onClick={() => setCurrentPage(page => Math.min(pages, page + 1))} disabled={currentPage >= pages}>Next</button>
+      </div>}
+      <a href={resolved} download="document.pdf">Download PDF</a>
+    </div>
     <Document file={resolved} loading={<span className="share-media-loading">Loading PDF preview...</span>} onLoadSuccess={({ numPages }) => setPages(numPages)} onLoadError={() => setFailed(true)}>
-      {Array.from({ length: large ? (pages || 1) : 1 }, (_, index) => (
-        <div className="share-pdf-page" key={index}>
-          <Page pageNumber={index + 1} width={large ? 760 : 420} renderTextLayer={false} renderAnnotationLayer={false} />
-          {large && pages > 1 && <p className="share-pdf-page-count">Page {index + 1} of {pages}</p>}
-        </div>
-      ))}
+      <div className="share-pdf-page">
+        <Page pageNumber={large ? currentPage : 1} width={large ? 760 : 420} renderTextLayer={false} renderAnnotationLayer={false} />
+      </div>
     </Document>
   </div>;
 }

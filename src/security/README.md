@@ -22,7 +22,7 @@ This folder contains the security boundary for the application. The browser only
 
 ## Known limitations
 
-- Posts and uploaded files use local JSON/filesystem persistence. The in-memory rate-limit store and single-process persistence are suitable for one instance; use a shared database/rate-limit store before horizontal scaling.
+- Local JSON/filesystem persistence is a development fallback. Production posts, comments, likes, conversations, and uploaded attachments use Supabase Database and Storage. The in-memory rate-limit store and filesystem fallback are single-instance only; use shared services before horizontal scaling.
 - Existing legacy posts without an owner cannot be safely attributed automatically. Assign ownership through a controlled migration if those records must be mutable.
 - Automated tests use mocked Supabase/provider responses; they do not create accounts, send email, or call Gemini.
 - This project has no TypeScript source or type-check script, so TypeScript validation is not applicable.

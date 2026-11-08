@@ -14,29 +14,46 @@ export default function CommentsPanel({ postId, currentUser, onSignIn, onChange,
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const inputRef = useRef(null);
+  const requestRef = useRef(null);
   useEffect(() => {
     const controller = new AbortController();
+    requestRef.current = controller;
     async function load() {
-      setLoading(true); setError('');
+      setLoading(true); setError(''); setComments([]); setHasMore(false); setPage(1);
       try {
-        // Replace all loaded pages so deletions and changes do not leave stale rows.
-        const pages = await Promise.all(Array.from({ length: page }, async (_, index) => {
-          const response = await apiFetch(`/api/posts/${encodeURIComponent(postId)}/comments?page=${index + 1}`, { signal: controller.signal });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'Could not load comments.');
-          return result;
-        }));
+        // A realtime refresh starts over so removals cannot leave stale rows.
+        const response = await apiFetch(`/api/posts/${encodeURIComponent(postId)}/comments?page=1`, { signal: controller.signal });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not load comments.');
         if (!controller.signal.aborted) {
-          setComments([...new Map(pages.flatMap(result => result.comments).map(comment => [comment.id, comment])).values()]);
-          setHasMore(pages.at(-1).hasMore);
+          setComments([...new Map(result.comments.map(comment => [comment.id, comment])).values()]);
+          setHasMore(result.hasMore);
         }
       } catch (failure) { if (!controller.signal.aborted) setError(failure.message || 'Could not load comments.'); }
       finally { if (!controller.signal.aborted) setLoading(false); }
     }
     load();
-    return () => controller.abort();
-  }, [postId, currentUser?.id, page, retry, refreshVersion]);
+    return () => requestRef.current?.abort();
+  }, [postId, currentUser?.id, retry, refreshVersion]);
   useEffect(() => { if (focusInput) inputRef.current?.focus(); }, [focusInput]);
+
+  async function loadMore() {
+    if (loading || !hasMore) return;
+    const controller = new AbortController();
+    requestRef.current?.abort(); requestRef.current = controller;
+    setLoading(true); setError('');
+    try {
+      const nextPage = page + 1;
+      const response = await apiFetch(`/api/posts/${encodeURIComponent(postId)}/comments?page=${nextPage}`, { signal: controller.signal });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not load comments.');
+      if (!controller.signal.aborted) {
+        setComments(previous => [...new Map([...previous, ...result.comments].map(comment => [comment.id, comment])).values()]);
+        setPage(nextPage); setHasMore(result.hasMore);
+      }
+    } catch (failure) { if (!controller.signal.aborted) setError(failure.message || 'Could not load comments.'); }
+    finally { if (!controller.signal.aborted) setLoading(false); }
+  }
 
   async function submit(event) {
     event.preventDefault();
@@ -58,7 +75,7 @@ export default function CommentsPanel({ postId, currentUser, onSignIn, onChange,
       const response = await apiFetch(`/api/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(comment.id)}`, { method: 'DELETE' });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Could not delete your comment.');
-      setComments(previous => previous.filter(item => item.id !== comment.id)); setSuccess('Comment deleted.'); onChange?.();
+      setComments(previous => previous.filter(item => item.id !== comment.id)); setSuccess('Comment deleted.'); setRetry(value => value + 1); onChange?.();
     } catch (failure) { setError(failure.message || 'Could not delete your comment.'); }
     finally { setDeleting(null); }
   }
@@ -75,7 +92,7 @@ export default function CommentsPanel({ postId, currentUser, onSignIn, onChange,
         {comment.ownerId === currentUser?.id && <button type="button" className="comment-delete" disabled={Boolean(deleting)} onClick={() => remove(comment)} aria-label="Delete your comment">{deleting === comment.id ? 'Deleting…' : 'Delete'}</button>}
       </div></div>)}
       {loading && <p role="status" className="comment-status">Loading comments…</p>}
-      {hasMore && !loading && <button type="button" className="comments-more" onClick={() => setPage(value => value + 1)}>Load more comments</button>}
+      {hasMore && !loading && <button type="button" className="comments-more" onClick={loadMore}>Load more comments</button>}
     </div>
     {currentUser ? <form onSubmit={submit} className="postdetail-comment-form">
       <input ref={inputRef} type="text" aria-label="Write a comment" placeholder="Write a comment…" maxLength={2000} value={draft} onChange={event => setDraft(event.target.value)} className="postdetail-comment-input" disabled={pending} />

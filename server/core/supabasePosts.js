@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createUpload, validateUploadedFile, removeUpload } from '../../src/security/server/uploads.js';
-import { text, httpError } from '../../src/security/server/validation.js';
+import { text, httpError, pageNumber } from '../../src/security/server/validation.js';
 
 const subjects = new Set(['DSA', 'OOP', 'Discrete Math', 'OS', 'Syllabi', 'General']);
 export const POST_COLUMNS = 'id,user_id,title,content,subject,author,post_type,post_status,created_at,updated_at,likes(count),comments(count),materials(material_id,post_id,user_id,file_name,storage_path,mime_type,file_size_bytes)';
@@ -39,7 +39,7 @@ export function mapSupabasePost(row) {
   };
 }
 
-export function createSupabasePostsRouter({ createDataClient, uploadsDir, storageBucket = 'post-files', downloadLimit = (_req, _res, next) => next(), approvalRequired = false }) {
+export function createSupabasePostsRouter({ createDataClient, uploadsDir, storageBucket = 'post-files', downloadLimit = (_req, _res, next) => next(), approvalRequired = false, cache = null }) {
   const router = Router();
   const upload = createUpload(uploadsDir, { kind: 'resource' });
   const clientFor = req => {
@@ -50,18 +50,38 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
   };
 
   router.get('/', async (req, res) => {
-    const query = text(req.query.q, { name: 'Search', max: 200 }).toLowerCase();
-    const subject = text(req.query.subject, { name: 'Subject', max: 40, fallback: 'all' }).toLowerCase();
+    const query = text(req.query.q, { name: 'Search', max: 200 });
+    const requestedSubject = text(req.query.subject, { name: 'Subject', max: 40, fallback: 'all' }).toLowerCase();
+    const subject = [...subjects].find(value => value.toLowerCase() === requestedSubject);
+    if (requestedSubject !== 'all' && !subject) throw httpError(400, 'Choose a supported subject.');
+    const page = pageNumber(req.query.page, 1, 10000);
+    const pageSize = pageNumber(req.query.pageSize, 24, 50);
     const client = clientFor(req);
-    const rows = check(await client.from('posts').select(columns).eq('post_status', 'published').order('created_at', { ascending: false }).limit(2000));
+    const version = await cache?.get('share:posts:version') || '0';
+    const cacheKey = `share:posts:${version}:${subject || 'all'}:${query || ''}:${page}:${pageSize}`;
+    let cached = await cache?.get(cacheKey);
+    if (!cached) {
+      let request = client.from('posts').select(columns, { count: 'exact' }).eq('post_status', 'published');
+      if (subject) request = request.eq('subject', subject);
+      if (query) {
+        // .or() accepts raw PostgREST syntax. Quote the value and escape SQL
+        // wildcard characters so punctuation cannot add another predicate.
+        const pattern = JSON.stringify(`%${query.replace(/[\\%_]/g, '\\$&')}%`);
+        request = request.or(['title', 'content', 'author', 'subject'].map(column => `${column}.ilike.${pattern}`).join(','));
+      }
+      const result = await request.order('created_at', { ascending: false }).order('id', { ascending: false })
+        .range((page - 1) * pageSize, page * pageSize - 1);
+      cached = { rows: check(result), count: result.count || 0 };
+      await cache?.set(cacheKey, cached, 15);
+    }
+    const rows = cached.rows || [];
     const ownLikes = req.user && rows.length
       ? check(await client.from('likes').select('post_id').eq('user_id', req.user.id).in('post_id', rows.map(row => row.id)))
       : [];
     const likedIds = new Set(ownLikes.map(like => like.post_id));
-    let posts = rows.map(row => mapSupabasePost({ ...row, liked: likedIds.has(row.id) }));
-    if (subject !== 'all') posts = posts.filter(post => post.subject.toLowerCase() === subject);
-    if (query) posts = posts.filter(post => [post.title, post.description, post.author, post.subject].some(value => value.toLowerCase().includes(query)));
-    res.set('Cache-Control', 'no-store').json({ success: true, count: posts.length, posts });
+    const posts = rows.map(row => mapSupabasePost({ ...row, liked: likedIds.has(row.id) }));
+    const count = Number(cached.count) || 0;
+    res.set('Cache-Control', 'no-store').json({ success: true, count, posts, page, pageSize, hasMore: page * pageSize < count });
   });
 
   router.get('/:id/file', downloadLimit, async (req, res) => {
@@ -130,6 +150,7 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
       check(await client.from('posts').insert(row));
       postSaved = true;
       if (materials.length) { check(await client.from('materials').insert(materials.length === 1 ? materials[0] : materials)); materialSaved = true; }
+      await cache?.set('share:posts:version', randomUUID(), 3600);
       res.status(201).json({ success: true, post: mapSupabasePost({ ...row, materials }) });
     } catch (error) {
       // Compensate failed multi-service writes. Never silently fall back to Render disk.
@@ -156,6 +177,7 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     check(await client.from('materials').delete().eq('post_id', id).eq('user_id', req.user.id));
     const deleted = check(await client.from('posts').delete().eq('id', id).eq('user_id', req.user.id).select('id'));
     if (!deleted?.length) throw httpError(403, 'The resource could not be deleted.');
+    await cache?.set('share:posts:version', randomUUID(), 3600);
     res.json({ success: true, message: 'Resource deleted.' });
   });
   return router;

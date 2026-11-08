@@ -14,10 +14,18 @@ export function apiUrl(path) {
 function callerAware(promise, signal) {
   if (!signal) return promise;
   if (signal.aborted) return Promise.reject(signal.reason || new DOMException('Request aborted', 'AbortError'));
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason || new DOMException('Request aborted', 'AbortError')), { once: true })),
-  ]);
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      cleanup();
+      reject(signal.reason || new DOMException('Request aborted', 'AbortError'));
+    };
+    const cleanup = () => signal.removeEventListener('abort', abort);
+    signal.addEventListener('abort', abort, { once: true });
+    promise.then(
+      value => { cleanup(); resolve(value); },
+      error => { cleanup(); reject(error); }
+    );
+  });
 }
 
 export async function apiFetch(path, options = {}) {

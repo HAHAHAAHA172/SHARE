@@ -44,6 +44,8 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const sendingRef = useRef(false);
+  const requestControllerRef = useRef(null);
+  const mountedRef = useRef(true);
   const messageImageUrls = useRef(new Set());
   const [landingSession, setLandingSession] = useState(() => openVersion > 0);
   useEffect(() => () => {
@@ -52,21 +54,30 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
   }, []);
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
   const messages = useMemo(() => landingSession ? [] : activeChat.messages, [activeChat.messages, landingSession]);
-  const [liveElapsed, setLiveElapsed] = useState(0);
+  const renderedMessages = useMemo(() => messages.slice(-100), [messages]);
   const responseStartRef = useRef(null);
   const [quizFile, setQuizFile] = useState(null);
   const [fileInstructions, setFileInstructions] = useState('');
   const [chatFile, setChatFile] = useState(null);
   const [chatFilePreview, setChatFilePreview] = useState(null);
+  const beginRequest = useCallback(() => {
+    requestControllerRef.current?.abort();
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    return controller;
+  }, []);
+  const finishRequest = useCallback((controller) => {
+    if (requestControllerRef.current === controller) requestControllerRef.current = null;
+  }, []);
+  useEffect(() => () => {
+    mountedRef.current = false;
+    const request = requestControllerRef.current;
+    requestControllerRef.current = null;
+    request?.abort();
+  }, []);
   useEffect(() => {
-    if (!isTyping || !isActive) return;
-    const tick = setInterval(() => {
-      if (responseStartRef.current) {
-        setLiveElapsed((Date.now() - responseStartRef.current) / 1000);
-      }
-    }, 100);
-    return () => clearInterval(tick);
-  }, [isTyping, isActive]);
+    if (!isActive) requestControllerRef.current?.abort();
+  }, [isActive]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -216,7 +227,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
 
     setIsTyping(true);
     responseStartRef.current = Date.now();
-    setLiveElapsed(0);
+    const requestController = beginRequest();
 
     const slidingWindowHistory = newMessages.slice(-6);
     const requestMessage = userMsgText;
@@ -246,12 +257,14 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
         response = await apiFetch('/api/chat', {
           method: 'POST',
           body: formData,
+          signal: requestController.signal,
         });
       } else {
         response = await apiFetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: requestMessage, history: slidingWindowHistory }),
+          signal: requestController.signal,
         });
       }
 
@@ -267,12 +280,14 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
       const finalDuration = responseStartRef.current ? (Date.now() - responseStartRef.current) / 1000 : null;
       updateActiveChatMessages([...newMessages, { role: 'bot', text: botReply, duration: finalDuration }], null, conversationId);
     } catch (error) {
+      if (requestController.signal.aborted) return;
       console.error(error);
       if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
       const finalDuration = responseStartRef.current ? (Date.now() - responseStartRef.current) / 1000 : null;
       updateActiveChatMessages([...newMessages, { role: 'bot', text: [botReply + pending, error.message || 'Unable to connect to PEDRO. Please try again.'].filter(Boolean).join('\n\n'), duration: finalDuration }], null, conversationId);
     } finally {
-      setIsTyping(false);
+      finishRequest(requestController);
+      if (mountedRef.current) setIsTyping(false);
       sendingRef.current = false;
     }
   };
@@ -291,7 +306,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
       conversationMessages = [];
     }
     responseStartRef.current = Date.now();
-    setLiveElapsed(0);
+    const requestController = beginRequest();
     setShowQuizModal(false);
     setIsTyping(true);
     
@@ -318,6 +333,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
         response = await apiFetch('/api/quiz/generate-from-file', {
           method: 'POST',
           body: formData,
+          signal: requestController.signal,
         });
       } else {
         response = await apiFetch('/api/quiz/generate', {
@@ -326,6 +342,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
           body: JSON.stringify({ 
             topic: quizTopic, items: parseInt(quizItems), parts: parseInt(quizParts), partTypes: partTypes 
           }),
+          signal: requestController.signal,
         });
       }
 
@@ -343,11 +360,13 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
 
       updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: `✨ Quiz generated successfully! Launching **${data.title}** now...` }], null, conversationId);
     } catch (error) {
+      if (requestController.signal.aborted) return;
       console.error('Quiz loading error:', error);
       setActiveQuizData(null);
       updateActiveChatMessages([...updatedMsgs, { role: 'bot', text: error.message || 'Unable to generate a quiz. Please try again.' }], null, conversationId);
     } finally {
-      setIsTyping(false);
+      finishRequest(requestController);
+      if (mountedRef.current) setIsTyping(false);
       sendingRef.current = false;
       setQuizFile(null);
       setFileInstructions('');
@@ -415,7 +434,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
 
     setIsTyping(true);
     responseStartRef.current = Date.now();
-    setLiveElapsed(0);
+    const requestController = beginRequest();
 
     updateActiveChatMessages([...updatedMessages, { role: 'bot', text: '' }]);
 
@@ -435,7 +454,8 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
       const response = await apiFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: promptForPedro, history: updatedMessages.slice(-6) })
+        body: JSON.stringify({ message: promptForPedro, history: updatedMessages.slice(-6) }),
+        signal: requestController.signal,
       });
       await readChatStream(response, (text) => {
         pending += text;
@@ -449,12 +469,14 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
       const finalDuration = responseStartRef.current ? (Date.now() - responseStartRef.current) / 1000 : null;
       updateActiveChatMessages([...updatedMessages, { role: 'bot', text: botReply, duration: finalDuration }]);
     } catch (error) {
+      if (requestController.signal.aborted) return;
       console.error(error);
       if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
       const finalDuration = responseStartRef.current ? (Date.now() - responseStartRef.current) / 1000 : null;
       updateActiveChatMessages([...updatedMessages, { role: 'bot', text: [botReply + pending, error.message || 'Unable to review quiz results. Please try again.'].filter(Boolean).join('\n\n'), duration: finalDuration }]);
     } finally {
-      setIsTyping(false);
+      finishRequest(requestController);
+      if (mountedRef.current) setIsTyping(false);
     }
   };
 
@@ -593,10 +615,11 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '20px', width: '100%', maxWidth: '850px', margin: '0 auto' }}>
-              {messages.map((msg, index) => {
-                const isPendingBotBubble = msg.role === 'bot' && msg.text === '' && index === messages.length - 1 && isTyping;
+              {messages.length > renderedMessages.length && <p className="pedro-history-window" role="status">Showing the 100 most recent messages.</p>}
+              {renderedMessages.map((msg, index) => {
+                const isPendingBotBubble = msg.role === 'bot' && msg.text === '' && index === renderedMessages.length - 1 && isTyping;
                 return (
-                  <div key={index} className="message-animate" style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', width: '100%' }}>
+                  <div key={msg.id || `${msg.createdAt || 'message'}-${index}`} className="message-animate" style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', width: '100%' }}>
                     <div style={{ background: msg.role === 'user' ? '#2d243f' : '#302641', color: '#ffffff', padding: '14px 18px', borderRadius: '16px', maxWidth: '85%', fontSize: '15px', lineHeight: '1.6', textAlign: 'left', boxSizing: 'border-box' }}>
                       <div style={{ fontSize: '11px', color: '#b0b0b0', marginBottom: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>{msg.role === 'user' ? 'You' : 'PEDRO'}</span>
@@ -621,7 +644,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
                         />
                       )}
                       {isPendingBotBubble ? (
-                        <ThinkingIndicator craftingQuiz={msg.pendingKind === 'quiz'} elapsed={liveElapsed} />
+                        <ThinkingIndicator craftingQuiz={msg.pendingKind === 'quiz'} />
                       ) : (
                         msg.text && (
                           <div className="markdown-content">

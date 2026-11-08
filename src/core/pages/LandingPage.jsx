@@ -4,7 +4,6 @@ import './LandingPage.css';
 import botLogo from '../assets/share_logo_transparent.png';
 
 export default function LandingPage({ onNavigate, currentUser }) {
-  const [, setProgress] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const startY = useRef(null);
   const taglineRef = useRef(null);
@@ -38,9 +37,8 @@ export default function LandingPage({ onNavigate, currentUser }) {
   return (
     <main className={`landing-root ${leaving ? 'landing-exit' : ''}`}
       onPointerDown={event => { startY.current = event.clientY; event.currentTarget.setPointerCapture(event.pointerId); }}
-      onPointerMove={event => { if (startY.current !== null) setProgress(Math.max(0, Math.min(1, (startY.current - event.clientY) / 120))); }}
-      onPointerUp={event => { if (startY.current !== null && startY.current - event.clientY >= 120) continueToHome(); else setProgress(0); startY.current = null; }}
-      onPointerCancel={() => { startY.current = null; setProgress(0); }}>
+      onPointerUp={event => { if (startY.current !== null && startY.current - event.clientY >= 120) continueToHome(); startY.current = null; }}
+      onPointerCancel={() => { startY.current = null; }}>
       <nav className="landing-nav"><span className="landing-nav-brand">S.H.A.R.E.</span><div className="landing-nav-actions"><button type="button" onClick={continueToHome}>{currentUser ? 'Go to home' : 'Log in'} <ArrowRight size={16} /></button>{!currentUser && <button type="button" className="landing-nav-signup" onClick={continueToSignup}>Sign up</button>}</div></nav>
       <section className="landing-hero">
         <div className="landing-hero-copy"><p className="landing-eyebrow">Your academic network</p><h1>Find the resources you need.<br />Share what helps.</h1><p className="landing-subtitle">S.H.A.R.E. gives students and instructors one simple place to discover notes, share learning materials, and get help when they are stuck.</p><div className="landing-hero-actions"><button type="button" className="landing-continue" onClick={continueToSignup} onPointerDown={event => event.stopPropagation()}>{currentUser ? 'Go to home' : 'Sign up'} <ArrowRight size={18} /></button>{!currentUser && <button type="button" className="landing-secondary" onClick={continueToHome} onPointerDown={event => event.stopPropagation()}>Log in</button>}</div><p className="landing-proof">Stop guessing who has the notes. Search, share, and study together.</p></div>

@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { unlink } from 'node:fs/promises';
+import { readFile, unlink } from 'node:fs/promises';
 import { createUserContent, createPartFromUri } from '@google/genai';
 import { validateQuizStructure } from '../../shared/quiz.js';
 import { createUpload, validateUploadedFile } from '../../src/security/server/uploads.js';
 import { MAX_RESPONSE_BYTES, createRequestContext, requestError, validateChat, validateQuizRequest, writeEvent } from '../../src/security/server/ai.js';
 
 const SYSTEM_INSTRUCTION = 'You are P.E.D.R.O (Pedagogical Educational Drill & Review Organizer), an AI study assistant for the S.H.A.R.E. academic platform. Help students understand concepts with accurate explanations and useful study guidance. Use clear markdown and a friendly tone. Avoid repeating introductions during ongoing conversations.';
+const MAX_INLINE_DOCUMENT_BYTES = 120 * 1024;
 
 function quizPrompt({ items, parts, partTypes, topic, instructions, fromFile }) {
   return `${fromFile ? 'Based on the attached document, generate an academic quiz.' : `Generate an academic quiz about ${JSON.stringify(topic)}.`}
@@ -37,7 +38,7 @@ function sendError(res, error) {
     429: 'Too many AI requests. Please try again later.', 503: 'The AI service is unavailable.',
     504: 'The AI request timed out. Please try again.',
   };
-  const message = status === 502 ? 'The AI service could not complete the request. Please try again.' : error.publicError ? error.message : messages[status];
+  const message = error.publicError ? error.message : messages[status] || 'The AI service could not complete the request. Please try again.';
   if (res.headersSent) {
     res.end(`data: ${JSON.stringify({ error: message })}\n\n`);
   } else {
@@ -153,8 +154,18 @@ export function createChatbotRouter({ ai, uploadsDir, aiTimeoutMs = 45000, maxOu
   async function generateQuiz(req, res, { context, config, uploadFile }, fromFile) {
     if (fromFile && !req.file) throw requestError(400, 'Attach a document to generate a quiz.');
     const settings = validateQuizRequest(req.body, fromFile);
-    const prompt = quizPrompt(settings);
-    const contents = fromFile ? createUserContent([await uploadFile(), prompt]) : prompt;
+    let prompt = quizPrompt(settings);
+    let contents = prompt;
+    if (fromFile) {
+      if (req.file.mimetype === 'text/plain') {
+        const document = await context.wait(readFile(req.file.path, 'utf8'));
+        const boundedDocument = document.slice(0, MAX_INLINE_DOCUMENT_BYTES);
+        prompt = `${prompt}\n\nDocument text${document.length > MAX_INLINE_DOCUMENT_BYTES ? ' (truncated)' : ''}:\n${boundedDocument}`;
+        contents = createUserContent([prompt]);
+      } else {
+        contents = createUserContent([await uploadFile(), prompt]);
+      }
+    }
     const response = await context.wait(ai.models.generateContent({
       model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite', contents,
       config: { ...config, responseMimeType: 'application/json' },

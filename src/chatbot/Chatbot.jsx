@@ -179,6 +179,13 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
     setChatMenu(null);
   };
 
+  const selectChat = useCallback((id) => {
+    if (isTyping) return;
+    setLandingSession(false);
+    setActiveChatId(id);
+    if (isMobile) setIsSidebarOpen(false);
+  }, [isMobile, isTyping, setActiveChatId]);
+
   const closeRenameDialog = () => {
     setRenameTarget(null);
     requestAnimationFrame(() => chatOptionsTriggerRef.current?.focus());
@@ -507,8 +514,8 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
             <div 
               key={chat.id}
               role="button" tabIndex={0} aria-pressed={chat.id === activeChatId}
-              onKeyDown={(e) => { if (!isTyping && e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setActiveChatId(chat.id); if (isMobile) setIsSidebarOpen(false); } }}
-              onClick={() => { if (isTyping) return; setActiveChatId(chat.id); if (isMobile) setIsSidebarOpen(false); }}
+              onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectChat(chat.id); } }}
+              onClick={() => selectChat(chat.id)}
               style={{ 
                 backgroundColor: chat.id === activeChatId ? '#44325f' : '#000000', color: '#ffffff', 
                 padding: '10px 12px 10px 18px', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', 

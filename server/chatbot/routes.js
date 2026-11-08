@@ -17,6 +17,18 @@ Return only a JSON object with this structure: {"title":"Quiz Title","parts":[{"
 Use at most 1000 characters for titles, answers, and each option, at most 4000 characters per question, and at most 10 options per question.`;
 }
 
+function parseQuizResponse(output) {
+  if (typeof output !== 'string' || Buffer.byteLength(output, 'utf8') > MAX_RESPONSE_BYTES) {
+    throw requestError(502, 'The AI returned an invalid quiz response.');
+  }
+  const cleaned = output.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  try {
+    return validateQuizStructure(JSON.parse(cleaned));
+  } catch {
+    throw requestError(502, 'The AI returned quiz data in an invalid format.');
+  }
+}
+
 function sendError(res, error) {
   if (res.destroyed || res.writableEnded) return;
   const status = [400, 413, 429, 503, 504].includes(error?.status) ? error.status : 502;
@@ -147,9 +159,7 @@ export function createChatbotRouter({ ai, uploadsDir, aiTimeoutMs = 45000, maxOu
       model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite', contents,
       config: { ...config, responseMimeType: 'application/json' },
     }));
-    const output = response.text;
-    if (typeof output !== 'string' || Buffer.byteLength(output, 'utf8') > MAX_RESPONSE_BYTES) throw requestError(502, 'Invalid quiz response.');
-    const quiz = validateQuizStructure(JSON.parse(output));
+    const quiz = parseQuizResponse(response.text);
     if (quiz.parts.length !== settings.parts || quiz.parts.reduce((count, part) => count + part.questions.length, 0) !== settings.items) {
       throw requestError(502, 'The generated quiz does not match the requested size.');
     }

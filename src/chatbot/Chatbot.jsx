@@ -346,7 +346,10 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
         });
       }
 
-      if (!response.ok) throw new Error(`Quiz generation failed (${response.status}).`);
+      if (!response.ok) {
+        const failure = await response.json().catch(() => ({}));
+        throw new Error(failure.error || `Quiz generation failed (${response.status}).`);
+      }
       const data = validateQuizStructure(await response.json());
       
       setActiveQuizData(data);

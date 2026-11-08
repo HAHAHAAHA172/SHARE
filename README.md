@@ -25,7 +25,8 @@ To start only the frontend, run `npm.cmd run dev:client`. To start only the API 
 ### Render deployment
 
 The repository includes [render.yaml](./render.yaml). Create the service from that
-blueprint, then provide `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and
+blueprint. Its build explicitly includes development dependencies because Vite is
+required during the production build. Then provide `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and
 `SUPABASE_SECRET_KEY` in Render's environment settings. The blueprint sets
 `NODE_ENV`, the public origin, temporary upload directories, and the health check.
 The temporary filesystem is not durable; Supabase Storage remains the source of

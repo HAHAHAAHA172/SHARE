@@ -6,7 +6,7 @@ import 'katex/dist/katex.min.css';
 import './Chatbot.css';
 import { apiFetch } from '../shared/api.js';
 import { readChatStream } from './chatStream.js';
-import { ArrowLeft, Plus, MoreHorizontal, UserRound, ArrowUp, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, MoreHorizontal, UserRound, ArrowUp, ChevronRight, ClipboardList, X } from 'lucide-react';
 import ThinkingIndicator from './ThinkingIndicator.jsx';
 import RenameChatDialog from './RenameChatDialog.jsx';
 import QuizDialog from './QuizDialog.jsx';
@@ -77,11 +77,16 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
   const messages = useMemo(() => landingSession ? [] : activeChat.messages, [activeChat.messages, landingSession]);
   const renderedMessages = useMemo(() => messages.slice(-100), [messages]);
+  const quizHistory = useMemo(() => chats.flatMap(chat => (chat.messages || [])
+    .filter(message => message.quizResult)
+    .map(message => ({ ...message.quizResult, chatId: chat.id, chatTitle: chat.title })))
+    .sort((left, right) => String(right.completedAt || '').localeCompare(String(left.completedAt || ''))), [chats]);
   const responseStartRef = useRef(null);
   const [quizFile, setQuizFile] = useState(null);
   const [fileInstructions, setFileInstructions] = useState('');
   const [chatFile, setChatFile] = useState(null);
   const [chatFilePreview, setChatFilePreview] = useState(null);
+  const [showQuizHistory, setShowQuizHistory] = useState(false);
   const beginRequest = useCallback(() => {
     requestControllerRef.current?.abort();
     const controller = new AbortController();
@@ -439,8 +444,37 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
     if (firstCheck.score !== secondCheck.score || firstCheck.total !== secondCheck.total) {
       throw new Error('The quiz score could not be verified. Please try again.');
     }
+    const items = [];
+    activeQuizData.parts.forEach((part, partIndex) => {
+      part.questions.forEach((question, questionIndex) => {
+        const userAnswer = String(finalAnswers[`${partIndex}-${questionIndex}`] || '').trim();
+        items.push({
+          question: question.question,
+          userAnswer,
+          correctAnswer: question.answer,
+          correct: normalizeQuizAnswer(userAnswer) === normalizeQuizAnswer(question.answer),
+        });
+      });
+    });
+    const ratio = firstCheck.total ? firstCheck.score / firstCheck.total : 0;
+    const encouragement = ratio === 1
+      ? 'Excellent work—you got every question right!'
+      : ratio >= 0.7
+        ? 'Great job! You’re building strong understanding—keep it up!'
+        : 'Nice effort! Review the missed answers and try again—you’re making progress.';
+    const quizResult = {
+      score: firstCheck.score,
+      total: firstCheck.total,
+      items,
+      encouragement,
+      completedAt: new Date().toISOString(),
+    };
     setActiveQuizData(null);
-    updateActiveChatMessages([...messages, { role: 'bot', text: `**${firstCheck.score}/${firstCheck.total}**` }]);
+    updateActiveChatMessages([...messages, {
+      role: 'bot',
+      text: `**Score: ${quizResult.score}/${quizResult.total}**\n\n${encouragement}`,
+      quizResult,
+    }]);
   };
 
   const advanceExpiredPart = useEffectEvent(() => handleNextQuestion(true));
@@ -568,6 +602,9 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
         
         <header className="pedro-header">
           <button type="button" onClick={onBack} className="pedro-back"><ArrowLeft size={17} aria-hidden="true" /> Back to S.H.A.R.E</button>
+          <button type="button" className="pedro-quiz-history-button" onClick={() => setShowQuizHistory(true)} aria-label="Show quiz history">
+            <ClipboardList size={17} aria-hidden="true" /> Quiz history
+          </button>
         </header>
 
         {/* Message list (or empty-state hero text) */}
@@ -588,6 +625,34 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
                         <span>{msg.role === 'user' ? 'You' : 'PEDRO'}</span>
                         {msg.role === 'bot' && typeof msg.duration === 'number' && (
                           <span style={{ color: '#b4a1c9', fontWeight: 'normal' }}>· {msg.duration.toFixed(1)}s</span>
+                        )}
+                        {showQuizHistory && (
+                          <div className="pedro-quiz-history-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setShowQuizHistory(false); }}>
+                            <section className="pedro-quiz-history-panel" role="dialog" aria-modal="true" aria-labelledby="pedro-quiz-history-title">
+                              <div className="pedro-quiz-history-heading">
+                                <h2 id="pedro-quiz-history-title">Quiz history</h2>
+                                <button type="button" onClick={() => setShowQuizHistory(false)} aria-label="Close quiz history"><X size={18} /></button>
+                              </div>
+                              {!quizHistory.length ? <p className="pedro-quiz-history-empty">Finish a quiz to see your verified score and answers here.</p> : (
+                                <div className="pedro-quiz-history-list">
+                                  {quizHistory.map((result, resultIndex) => (
+                                    <article className="pedro-quiz-history-card" key={`${result.completedAt}-${resultIndex}`}>
+                                      <div className="pedro-quiz-history-score"><strong>{result.score}/{result.total}</strong><span>{result.chatTitle}</span></div>
+                                      <p className="pedro-quiz-history-encouragement">{result.encouragement}</p>
+                                      <ol>
+                                        {result.items.map((item, itemIndex) => (
+                                          <li key={`${item.question}-${itemIndex}`} className={item.correct ? 'is-correct' : 'is-wrong'}>
+                                            <strong>{item.question}</strong>
+                                            {item.correct ? <span>Correct: {item.correctAnswer}</span> : <span>Your answer: {item.userAnswer || 'No answer'} · Correct answer: {item.correctAnswer}</span>}
+                                          </li>
+                                        ))}
+                                      </ol>
+                                    </article>
+                                  ))}
+                                </div>
+                              )}
+                            </section>
+                          </div>
                         )}
                       </div>
                       {/* Inline image thumbnail for image attachments sent by the user */}

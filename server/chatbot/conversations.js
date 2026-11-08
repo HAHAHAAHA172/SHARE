@@ -17,7 +17,7 @@ function decode(row) {
   let message = { text: row.content };
   try {
     const parsed = JSON.parse(row.content);
-    if (parsed?.format === 'pedro-message-v1' && typeof parsed.text === 'string') message = { text: parsed.text, fileName: parsed.fileName || null, duration: parsed.duration ?? null };
+    if (parsed?.format === 'pedro-message-v1' && typeof parsed.text === 'string') message = { text: parsed.text, fileName: parsed.fileName || null, duration: parsed.duration ?? null, quizResult: parsed.quizResult || null };
   } catch { /* Existing plain-text messages remain readable. */ }
   return { ...message, id: row.message_id, role: row.role === 'assistant' || row.role === 'bot' ? 'bot' : 'user', createdAt: row.created_at };
 }
@@ -54,7 +54,8 @@ export function createConversationsRouter({ createDataClient }) {
       if (!Number.isFinite(timestamp)) throw httpError(400, 'Invalid message date.');
       return { message_id: uuid(message.id), conversatioon_id: id, role: message.role === 'bot' ? 'assistant' : 'user',
         content: JSON.stringify({ format: 'pedro-message-v1', text: content, fileName: text(message.fileName, { name: 'Filename', max: 180 }) || null,
-          duration: typeof message.duration === 'number' && Number.isFinite(message.duration) && message.duration >= 0 ? message.duration : null }),
+          duration: typeof message.duration === 'number' && Number.isFinite(message.duration) && message.duration >= 0 ? message.duration : null,
+          quizResult: message.quizResult && typeof message.quizResult === 'object' ? message.quizResult : null }),
         created_at: new Date(timestamp).toISOString() };
     });
     if (Buffer.byteLength(JSON.stringify(messages)) > 430000) throw httpError(413, 'Save fewer messages at a time.');

@@ -62,7 +62,7 @@ export default function useSavedChats(isTyping) {
       const batch = [];
       let bytes = 0;
       for (const message of pending) {
-        const wire = { id: message.id, role: message.role, text: message.text || (message.fileName ? `Attached file: ${message.fileName}` : ''), fileName: message.fileName || null, duration: message.duration ?? null, createdAt: message.createdAt };
+        const wire = { id: message.id, role: message.role, text: message.text || (message.fileName ? `Attached file: ${message.fileName}` : ''), fileName: message.fileName || null, duration: message.duration ?? null, quizResult: message.quizResult || null, createdAt: message.createdAt };
         const size = new TextEncoder().encode(JSON.stringify(wire)).length;
         if (batch.length && (bytes + size > 400000 || batch.length >= 20)) break;
         batch.push(wire); bytes += size;

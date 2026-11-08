@@ -28,3 +28,10 @@ Desktop.ini
 /.codex/
 IMPLEMENTATION_CHECKLIST.md
 /src/mantest/
+.vscode/
+.idea/
+*.pid
+*.pid.lock
+*.md
+!AGENTS.md
+!README.md

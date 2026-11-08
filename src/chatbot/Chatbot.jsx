@@ -714,7 +714,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
                   <input 
                     type="file" 
                     style={{ display: 'none' }} 
-                    accept=".pdf,.txt,.docx,image/*" 
+                    accept=".pdf,.txt,.docx,.pptx,image/*" 
                     onChange={(e) => {
                       if(e.target.files[0]) {
                         setChatFile(e.target.files[0]);
@@ -813,7 +813,7 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <input 
                   type="file" 
-                  accept=".pdf,.txt,.docx,image/*" 
+                  accept=".pdf,.txt,.docx,.pptx,image/*" 
                   onChange={(e) => setQuizFile(e.target.files[0])} 
                   style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #444', background: '#161222', color: '#fff', fontSize: '12px' }}
                 />

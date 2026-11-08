@@ -121,7 +121,7 @@ export function createChatbotRouter({ ai, uploadsDir, aiTimeoutMs = 45000, maxOu
   router.post('/chat', route(async (req, res, { context, config, uploadFile }) => {
     const { message, history } = validateChat(req.body, Boolean(req.file));
     const filePart = req.file ? await uploadFile() : null;
-    const chat = ai.chats.create({ model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite', history, config: { ...config, systemInstruction: SYSTEM_INSTRUCTION } });
+    const chat = ai.chats.create({ model: process.env.GEMINI_MODEL || 'gemini-3.8-flash', history, config: { ...config, systemInstruction: SYSTEM_INSTRUCTION } });
     const stream = await context.wait(chat.sendMessageStream({
       message: filePart ? createUserContent([filePart, message || 'Please analyze this attached document.']) : message,
     }));

@@ -13,6 +13,28 @@ import QuizDialog from './QuizDialog.jsx';
 import { validateQuizStructure } from '../../shared/quiz.js';
 import useSavedChats, { newChat } from './useSavedChats.js';
 
+function normalizeQuizAnswer(value) {
+  return String(value ?? '')
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+function calculateQuizScore(quiz, answers) {
+  let score = 0;
+  let total = 0;
+  quiz.parts.forEach((part, partIndex) => {
+    part.questions.forEach((question, questionIndex) => {
+      total += 1;
+      const submitted = answers[`${partIndex}-${questionIndex}`];
+      if (normalizeQuizAnswer(submitted) === normalizeQuizAnswer(question.answer)) score += 1;
+    });
+  });
+  return { score, total };
+}
+
 function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true }) {
   const [input, setInput] = useState('');
 
@@ -404,83 +426,14 @@ function Chatbot({ currentUser = null, onBack, openVersion = 0, isActive = true 
     }
   };
 
-  const finishQuiz = async (finalAnswers) => {
-    let score = 0;
-    let totalQuestions = 0;
-    let mistakesData = []; 
-
-    activeQuizData.parts.forEach((part, pIdx) => {
-      part.questions.forEach((q, qIdx) => {
-        totalQuestions++;
-        const rawUserAns = finalAnswers[`${pIdx}-${qIdx}`] || '';
-        const userAns = rawUserAns.trim().toLowerCase();
-        const correctAns = (q.answer || '').trim().toLowerCase();
-        
-        if (userAns === correctAns) {
-          score++;
-        } else {
-          mistakesData.push(`- **Part ${pIdx + 1}, Q${qIdx + 1}**: "${q.question}"\n  - My Answer: ${rawUserAns || 'None'}\n  - Auto-Grader Expected: ${q.answer}`);
-        }
-      });
-    });
-
-    setActiveQuizData(null);
-
-    const cleanUserMessage = `I finished my quiz! The auto-grader scored me ${score} out of ${totalQuestions}. Can you review my results?`;
-    const updatedMessages = [...messages, { role: 'user', text: cleanUserMessage }];
-    updateActiveChatMessages(updatedMessages);
-
-    const promptForPedro = `I just completed a mock quiz. The basic auto-grader gave me ${score} out of ${totalQuestions}.\n\n` +
-      (mistakesData.length > 0
-        ? `The auto-grader uses strict text matching and might have marked me wrong for minor differences. Here are the questions it marked wrong:\n${mistakesData.join('\n')}\n\nPlease review these as a human teacher would. If my answer is conceptually correct (e.g., I listed valid items in a different order, or made a tiny typo), please tell me I actually got it right and explain why! If I am truly wrong, provide a friendly explanation of the correct answer.`
-        : `I got a perfect score! Please congratulate me and give a brief encouraging message.`);
-
-    setIsTyping(true);
-    responseStartRef.current = Date.now();
-    const requestController = beginRequest();
-
-    updateActiveChatMessages([...updatedMessages, { role: 'bot', text: '' }]);
-
-    let botReply = '';
-    let pending = '';
-    let flushTimer = null;
-
-    const flush = () => {
-      if (pending) {
-        botReply += pending;
-        pending = '';
-        updateActiveChatMessages([...updatedMessages, { role: 'bot', text: botReply }]);
-      }
-    };
-
-    try {
-      const response = await apiFetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: promptForPedro, history: updatedMessages.slice(-6) }),
-        signal: requestController.signal,
-      });
-      await readChatStream(response, (text) => {
-        pending += text;
-        if (!flushTimer) {
-          flushTimer = setTimeout(() => { flush(); flushTimer = null; }, 50);
-        }
-      });
-
-      if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
-      flush();
-      const finalDuration = responseStartRef.current ? (Date.now() - responseStartRef.current) / 1000 : null;
-      updateActiveChatMessages([...updatedMessages, { role: 'bot', text: botReply, duration: finalDuration }]);
-    } catch (error) {
-      if (requestController.signal.aborted) return;
-      console.error(error);
-      if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
-      const finalDuration = responseStartRef.current ? (Date.now() - responseStartRef.current) / 1000 : null;
-      updateActiveChatMessages([...updatedMessages, { role: 'bot', text: [botReply + pending, error.message || 'Unable to review quiz results. Please try again.'].filter(Boolean).join('\n\n'), duration: finalDuration }]);
-    } finally {
-      finishRequest(requestController);
-      if (mountedRef.current) setIsTyping(false);
+  const finishQuiz = (finalAnswers) => {
+    const firstCheck = calculateQuizScore(activeQuizData, finalAnswers);
+    const secondCheck = calculateQuizScore(activeQuizData, finalAnswers);
+    if (firstCheck.score !== secondCheck.score || firstCheck.total !== secondCheck.total) {
+      throw new Error('The quiz score could not be verified. Please try again.');
     }
+    setActiveQuizData(null);
+    updateActiveChatMessages([...messages, { role: 'bot', text: `**${firstCheck.score}/${firstCheck.total}**` }]);
   };
 
   const advanceExpiredPart = useEffectEvent(() => handleNextQuestion(true));

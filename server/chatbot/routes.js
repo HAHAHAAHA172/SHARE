@@ -83,7 +83,7 @@ export function createChatbotRouter({ ai, uploadsDir, aiTimeoutMs = 45000, maxOu
         if (req.file) await context.wait(validateUploadedFile(req.file, { kind: 'ai' }));
         const config = { maxOutputTokens, abortSignal: context.signal, httpOptions: { timeout: aiTimeoutMs } };
         const uploadFile = async () => {
-          const pending = Promise.resolve().then(() => ai.files.upload({ file: req.file.path, config: { mimeType: req.file.mimetype, abortSignal: context.signal, httpOptions: { timeout: aiTimeoutMs } } }));
+          const pending = Promise.resolve().then(() => ai.files.upload({ file: req.file.path, config: { mimeType: req.file.mimetype } }));
           // A provider may finish an upload after cancellation; delete that late result too.
           pending.then(file => {
             if (context.signal.aborted) void deleteProviderFile(ai, file);

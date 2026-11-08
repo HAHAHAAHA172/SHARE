@@ -26,6 +26,15 @@ function parseQuizResponse(output) {
   try {
     return validateQuizStructure(JSON.parse(cleaned));
   } catch {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      try {
+        return validateQuizStructure(JSON.parse(cleaned.slice(start, end + 1)));
+      } catch {
+        // Fall through to the same public error without exposing provider output.
+      }
+    }
     throw requestError(502, 'The AI returned quiz data in an invalid format.');
   }
 }

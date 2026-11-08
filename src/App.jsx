@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { supabase, signOut, readDeviceValue, writeDeviceValue } from './security/client/auth.js';
+import { apiFetch } from './shared/api.js';
 import './core/core.css';
 import './App.css';
 import './security/client/production.css';
@@ -46,8 +47,8 @@ function displayName(user) {
 export default function App() {
   const [{ screen, postId }, setRoute] = useState(readRoute);
   const [auth, setAuth] = useState({ user: null, ready: !supabase, recovery: false });
-  const currentUser = auth.user ? { id: auth.user.id, email: auth.user.email,
-    name: displayName(auth.user) } : null;
+  const currentUser = useMemo(() => auth.user ? { id: auth.user.id, email: auth.user.email,
+    name: displayName(auth.user) } : null, [auth.user]);
   const identity = currentUser?.id || 'guest';
   const [notification, setNotification] = useState('');
   const [posts, setPosts] = useState([]);
@@ -55,7 +56,23 @@ export default function App() {
   const [favorites, setFavorites] = useState(() => readFavorites('guest'));
   const [chatOpened, setChatOpened] = useState(() => readRoute().screen === 'pedro');
   const [pedroOpenVersion, setPedroOpenVersion] = useState(() => readRoute().screen === 'pedro' ? 1 : 0);
-  const [studyPost, setStudyPost] = useState(null);
+
+  useEffect(() => {
+    if (!auth.ready || !currentUser) return undefined;
+    let active = true;
+    apiFetch('/api/saved').then(async response => {
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Saved posts could not be loaded.');
+      if (!active) return;
+      const next = Array.isArray(result.posts) ? result.posts : [];
+      setFavorites(next);
+      writeDeviceValue(`share-favorites:${identity}`, JSON.stringify(next));
+    }).catch(() => {
+      // Keep the device copy available before the migration is applied or
+      // during a temporary database outage.
+    });
+    return () => { active = false; };
+  }, [auth.ready, currentUser, identity]);
 
   useEffect(() => {
     // Old local demo profiles are never accepted as authentication.
@@ -70,7 +87,6 @@ export default function App() {
       const nextIdentity = session?.user?.id || 'guest';
       if (nextIdentity !== previousIdentity) {
         setFavorites(readFavorites(nextIdentity));
-        setStudyPost(null);
         setSelectedPost(null);
         setChatOpened(nextIdentity !== 'guest' && readRoute().screen === 'pedro');
         previousIdentity = nextIdentity;
@@ -139,10 +155,7 @@ export default function App() {
     window.location.hash = `/${next}${nextPostId ? `/${encodeURIComponent(nextPostId)}` : ''}`;
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
-  const openPedro = post => {
-    if (post && currentUser) setStudyPost({ ...post });
-    navigate('pedro');
-  };
+  const openPedro = () => navigate('pedro');
   const login = message => {
     setAuth(previous => ({ ...previous, recovery: false }));
     setNotification(message || 'You are signed in.');
@@ -155,12 +168,22 @@ export default function App() {
       navigate('login');
     } catch (error) { setNotification(error.message); }
   };
-  const toggleFavorite = post => {
-    setFavorites(previous => {
-      const next = previous.some(item => item.id === post.id) ? previous.filter(item => item.id !== post.id) : [post, ...previous];
-      writeDeviceValue(`share-favorites:${identity}`, JSON.stringify(next));
-      return next;
-    });
+  const toggleFavorite = async post => {
+    const wasSaved = favorites.some(item => item.id === post.id);
+    const previous = favorites;
+    const next = wasSaved ? favorites.filter(item => item.id !== post.id) : [post, ...favorites];
+    setFavorites(next);
+    writeDeviceValue(`share-favorites:${identity}`, JSON.stringify(next));
+    if (!currentUser) return;
+    try {
+      const response = await apiFetch(`/api/saved/${encodeURIComponent(post.id)}`, { method: wasSaved ? 'DELETE' : 'PUT' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The saved post could not be updated.');
+    } catch (error) {
+      setFavorites(previous);
+      writeDeviceValue(`share-favorites:${identity}`, JSON.stringify(previous));
+      setNotification(error.message || 'The saved post could not be updated.');
+    }
   };
   const selectPost = post => navigate('post-detail', post);
 
@@ -192,7 +215,7 @@ export default function App() {
   return <>
     {notification && <p className="app-status" role="status">{notification}</p>}
     <div className="core-module" hidden={showChat}><Suspense fallback={<RouteSkeleton />}>{page}</Suspense></div>
-    {(chatOpened || showChat) && currentUser && <div hidden={!showChat}><Suspense fallback={<main className="app-route-message" role="status">Opening P.E.D.R.O…</main>}><Chatbot key={`${identity}:${pedroOpenVersion}`} currentUser={currentUser} onBack={() => navigate('home')} studyPost={studyPost} openVersion={pedroOpenVersion} isActive={showChat} /></Suspense></div>}
+    {(chatOpened || showChat) && currentUser && <div hidden={!showChat}><Suspense fallback={<main className="app-route-message" role="status">Opening P.E.D.R.O…</main>}><Chatbot key={`${identity}:${pedroOpenVersion}`} currentUser={currentUser} onBack={() => navigate('home')} openVersion={pedroOpenVersion} isActive={showChat} /></Suspense></div>}
   </>;
 }
 

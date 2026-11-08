@@ -214,6 +214,9 @@
   margin-bottom: 14px;
 }
 
+.createpost-file-list { display: grid; gap: 8px; margin-bottom: 14px; }
+.createpost-file-list .createpost-file-badge { margin-bottom: 0; }
+
 .createpost-file-badge-name {
   font-size: 13px;
   color: #FFFFFF;

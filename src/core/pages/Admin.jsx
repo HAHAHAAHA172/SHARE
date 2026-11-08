@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, Check, RefreshCw, ShieldCheck, ShieldX, Trash2, UserPlus, Users, X } from 'lucide-react';
+import { ArrowLeft, Check, RefreshCw, ShieldCheck, ShieldX, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import { apiFetch } from '../../shared/api.js';
 import './Admin.css';
 
@@ -15,6 +15,7 @@ export default function Admin({ onNavigate }) {
   const [accounts, setAccounts] = useState([]);
   const [pendingAdmin, setPendingAdmin] = useState(null);
   const [promoting, setPromoting] = useState(false);
+  const [removingAdmin, setRemovingAdmin] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -56,6 +57,20 @@ export default function Admin({ onNavigate }) {
       if (!response.ok) throw new Error(result.error || 'Could not add this administrator.');
       setMessage(`${pendingAdmin.name} is now an administrator.`);
       setPendingAdmin(null);
+      await loadAccounts();
+    } catch (cause) { setError(cause.message); }
+    finally { setPromoting(false); }
+  };
+
+  const demote = async () => {
+    if (!removingAdmin) return;
+    setPromoting(true); setError(''); setMessage('');
+    try {
+      const response = await apiFetch(`/api/admin/users/${removingAdmin.id}/admin`, { method: 'DELETE' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not remove administrator access.');
+      setMessage(`${removingAdmin.name} is now a standard user.`);
+      setRemovingAdmin(null);
       await loadAccounts();
     } catch (cause) { setError(cause.message); }
     finally { setPromoting(false); }
@@ -106,7 +121,7 @@ export default function Admin({ onNavigate }) {
       {accounts.map(account => <article className="admin-account" key={account.id}>
         <div className="admin-account-avatar" aria-hidden="true">{account.name.trim().charAt(0).toUpperCase()}</div>
         <div className="admin-account-details"><h2>{account.name}</h2><p>{account.email || 'No email address available'}</p></div>
-        {account.role === 'admin' ? <span className="admin-role"><ShieldCheck size={16} /> Administrator</span> : <button type="button" className="admin-promote" disabled={!account.canPromote} onClick={() => setPendingAdmin(account)} title={account.canPromote ? 'Add as administrator' : 'This account needs a profile first'}><UserPlus size={17} /> Add admin</button>}
+        {account.role === 'admin' ? <button type="button" className="admin-demote" onClick={() => setRemovingAdmin(account)}><UserMinus size={17} /> Remove admin</button> : <button type="button" className="admin-promote" disabled={!account.canPromote} onClick={() => setPendingAdmin(account)} title={account.canPromote ? 'Add as administrator' : 'This account needs a profile first'}><UserPlus size={17} /> Add admin</button>}
       </article>)}
     </section>)}
     {pendingAction && <div className="admin-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setPendingAction(null); }}>
@@ -130,6 +145,17 @@ export default function Admin({ onNavigate }) {
         <div className="admin-dialog-actions">
           <button type="button" className="admin-cancel" disabled={promoting} onClick={() => setPendingAdmin(null)}>Cancel</button>
           <button type="button" className="admin-confirm-promote" disabled={promoting} onClick={promote}>{promoting ? 'Adding…' : 'Add administrator'}</button>
+        </div>
+      </section>
+    </div>}
+    {removingAdmin && <div className="admin-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !promoting) setRemovingAdmin(null); }}>
+      <section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-demote-title">
+        <button type="button" className="admin-dialog-close" aria-label="Close confirmation" disabled={promoting} onClick={() => setRemovingAdmin(null)}><X size={18} /></button>
+        <h2 id="admin-demote-title">Remove administrator access?</h2>
+        <p><strong>{removingAdmin.name}</strong> ({removingAdmin.email}) will return to a standard student account and lose moderation access.</p>
+        <div className="admin-dialog-actions">
+          <button type="button" className="admin-cancel" disabled={promoting} onClick={() => setRemovingAdmin(null)}>Cancel</button>
+          <button type="button" className="danger" disabled={promoting} onClick={demote}>{promoting ? 'Removing…' : 'Remove administrator'}</button>
         </div>
       </section>
     </div>}

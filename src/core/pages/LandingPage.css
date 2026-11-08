@@ -27,13 +27,13 @@
   position: absolute;
   inset: -20%;
   background: radial-gradient(ellipse 80% 60% at 50% 40%, #7c73d9 0%, #5a53b0 50%, #3d3878 100%);
-  transition: transform 0.05s linear;
+  transition: transform 200ms cubic-bezier(.22,1,.36,1);
   z-index: 0;
 }
 
 /* ── Exit animation ── */
 .landing-exit {
-  animation: landingSlideUp 0.5s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+  animation: landingSlideUp 400ms cubic-bezier(.22,1,.36,1) forwards;
 }
 
 @keyframes landingSlideUp {
@@ -49,7 +49,7 @@
   flex-direction: column;
   align-items: center;
   gap: clamp(12px, 3vw, 24px);
-  transition: transform 0.05s linear, opacity 0.05s linear;
+  transition: transform 200ms cubic-bezier(.22,1,.36,1), opacity 200ms cubic-bezier(.22,1,.36,1);
 }
 
 /* ── Logo wrap ── */
@@ -120,7 +120,7 @@
   height: 3px;
   background: rgba(255, 255, 255, 0.8);
   border-radius: 3px;
-  transition: width 0.05s linear;
+  transition: width 200ms cubic-bezier(.22,1,.36,1);
 }
 
 /* Upward swipe hint */

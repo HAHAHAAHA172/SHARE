@@ -17,8 +17,10 @@ export default function PostDetail({ post, currentUser, onNavigate, isFavorite =
   const displayAuthor = post?.author || 'Student';
   const displayDesc = post?.description || '';
 
-  const file = post?.file;
-  const fileUrl = file?.url ? (/^https?:\/\//i.test(file.url) ? file.url : `${API_BASE_URL}${file.url.startsWith('/') ? '' : '/'}${file.url}`) : null;
+  const files = post?.files?.length ? post.files : (post?.file ? [post.file] : []);
+  const resourceUrl = file => file?.url
+    ? (/^https?:\/\//i.test(file.url) ? file.url : `${API_BASE_URL}${file.url.startsWith('/') ? '' : '/'}${file.url}`)
+    : null;
 
 
   return (
@@ -72,8 +74,8 @@ export default function PostDetail({ post, currentUser, onNavigate, isFavorite =
           )}
 
           <div className="postdetail-resources-list">
-            {fileUrl ? (
-              <a className="postdetail-resource-card" href={fileUrl} target="_blank" rel="noopener noreferrer" download={file.originalname || file.filename}>
+            {files.length ? files.map(file => (
+              <a key={file.filename || file.url} className="postdetail-resource-card" href={resourceUrl(file)} target="_blank" rel="noopener noreferrer" download={file.originalname || file.filename}>
                 <div className="postdetail-res-icon-wrap"><FileText size={26} color="#FFFFFF" /></div>
                 <div className="postdetail-res-text-wrap">
                   <h3 className="postdetail-res-title">{file.originalname || file.filename || 'Attached resource'}</h3>
@@ -81,7 +83,7 @@ export default function PostDetail({ post, currentUser, onNavigate, isFavorite =
                 </div>
                 <Download size={22} />
               </a>
-            ) : <p className="core-muted">No attachment on this post.</p>}
+            )) : <p className="core-muted">No attachment on this post.</p>}
           </div>
 
           <PostActions post={post} currentUser={currentUser} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} onComment={() => { setFocusComment(value => value + 1); document.getElementById('post-comments')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }} onSignIn={() => onNavigate?.('login')} refresh commentVersion={`${commentVersion}:${liveVersion}`} />

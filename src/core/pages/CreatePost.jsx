@@ -3,13 +3,13 @@ import './CreatePost.css';
 import botLogo from '../assets/share_logo1.png';
 import { apiFetch } from '../../shared/api.js';
 import { ArrowLeft, User, FilePlus, Image as ImageIcon, Video, MoreHorizontal, X, FileText } from 'lucide-react';
+import { optimizeImageFile } from '../../shared/imageOptimization.js';
 
 export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
   const [content, setContent] = useState('');
   const [subject, setSubject] = useState('DSA');
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
-  const [attachedFile, setAttachedFile] = useState(null);
-  const [attachedMedia, setAttachedMedia] = useState(null);
+  const [attachments, setAttachments] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,24 +22,23 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
 
   const handlePost = async () => {
     if (isSubmitting) return;
-    if (!content.trim() && !attachedFile && !attachedMedia) {
+    if (!content.trim() && attachments.length === 0) {
       setError('Write a post or attach a resource before posting.');
       return;
     }
     setError('');
     setIsSubmitting(true);
-    const attachment = attachedFile || attachedMedia;
-    if (attachment?.size > 10 * 1024 * 1024) {
-      setError('Choose an attachment smaller than 10 MB.');
+    if (attachments.some(attachment => attachment.size > 10 * 1024 * 1024)) {
+      setError('Each attachment must be smaller than 10 MB.');
       setIsSubmitting(false);
       return;
     }
     const lines = content.trim().split('\n');
     const formData = new FormData();
-    formData.append('title', lines[0] || attachment?.name || 'Shared Academic Resource');
+    formData.append('title', lines[0] || attachments[0]?.name || 'Shared Academic Resource');
     formData.append('description', lines.slice(1).join('\n'));
     formData.append('subject', subject);
-    if (attachment) formData.append('file', attachment);
+    attachments.forEach(attachment => formData.append('files', attachment));
     try {
       const response = await apiFetch('/api/posts', { method: 'POST', body: formData });
       const result = await response.json().catch(() => ({}));
@@ -126,25 +125,13 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
             </div>
 
             {/* Attached File Preview Badge if any */}
-            {(attachedFile || attachedMedia) && (
-              <div className="createpost-file-badge">
+            {attachments.length > 0 && <div className="createpost-file-list" aria-label="Selected attachments">
+              {attachments.map((attachment, index) => <div className="createpost-file-badge" key={`${attachment.name}:${attachment.lastModified}:${index}`}>
                 <FileText size={16} color="#9A89C6" />
-                <span className="createpost-file-badge-name">
-                  {attachedFile ? attachedFile.name : attachedMedia?.name}
-                </span>
-                <button
-                  type="button"
-                  className="createpost-file-badge-remove"
-                  aria-label="Remove attachment"
-                  onClick={() => {
-                    setAttachedFile(null);
-                    setAttachedMedia(null);
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
+                <span className="createpost-file-badge-name">{attachment.name}</span>
+                <button type="button" className="createpost-file-badge-remove" aria-label={`Remove ${attachment.name}`} onClick={() => setAttachments(items => items.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>
+              </div>)}
+            </div>}
 
             {/* Media & Attachment Icons Row */}
             <div className="createpost-actions-row">
@@ -189,26 +176,25 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
                 ref={fileInputRef}
                 type="file"
                 accept=".pdf,.doc,.docx,.pptx,.txt"
+                multiple
                 style={{ display: 'none' }}
                 onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setAttachedFile(e.target.files[0]);
-                    setAttachedMedia(null);
-                    e.target.value = '';
-                  }
+                  const selected = Array.from(e.target.files || []);
+                  setAttachments(items => [...items, ...selected].slice(0, 4));
+                  e.target.value = '';
                 }}
               />
               <input
                 ref={mediaInputRef}
                 type="file"
                 accept="image/*,video/*"
+                multiple
                 style={{ display: 'none' }}
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setAttachedMedia(e.target.files[0]);
-                    setAttachedFile(null);
-                    e.target.value = '';
-                  }
+                onChange={async (e) => {
+                  const selected = Array.from(e.target.files || []);
+                  e.target.value = '';
+                  const optimized = await Promise.all(selected.map(file => file.type.startsWith('image/') ? optimizeImageFile(file) : file));
+                  setAttachments(items => [...items, ...optimized].slice(0, 4));
                 }}
               />
             </div>

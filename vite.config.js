@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   checkPublicEnv(environment)
   const { PORT = '3001' } = environment
   return {
+    base: environment.VITE_ASSET_BASE_URL || '/',
     plugins: [react()],
     server: {
       watch: { ignored: ['**/.integration/**'] },

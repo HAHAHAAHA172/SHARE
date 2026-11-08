@@ -14,7 +14,7 @@ function check(result) {
   return result.data;
 }
 
-export function createProfileRouter({ createDataClient, storageBucket = 'avatars', uploadsDir = './uploads' }) {
+export function createProfileRouter({ createDataClient, storageBucket = 'avatars', uploadsDir = './uploads', cache = null }) {
   const router = Router();
   const upload = createUpload(uploadsDir, { kind: 'avatar' });
   const clientFor = req => createDataClient(req.user ? req.get('Authorization')?.slice(7) : undefined);
@@ -31,9 +31,13 @@ export function createProfileRouter({ createDataClient, storageBucket = 'avatars
   });
 
   router.get('/courses', async (req, res) => {
+    const cached = await cache?.get('share:courses:active');
+    if (Array.isArray(cached)) return res.set('Cache-Control', 'private, max-age=300').json({ courses: cached });
     const result = await clientFor(req).from('courses').select('course_id,course_name').eq('is_active', true).order('course_name');
     if (result.error) throw httpError(503, 'Course options are temporarily unavailable.');
-    res.set('Cache-Control', 'no-store').json({ courses: result.data || [] });
+    const courses = result.data || [];
+    await cache?.set('share:courses:active', courses, 300);
+    res.set('Cache-Control', 'private, max-age=300').json({ courses });
   });
 
   router.patch('/', async (req, res) => {

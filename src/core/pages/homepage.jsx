@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { Component, lazy, Suspense, useState, useEffect, useMemo, useRef } from 'react';
 import './homepage.css';
 import botLogo from '../assets/share_logo1.png';
 import { apiFetch, apiUrl } from '../../shared/api.js';
@@ -103,6 +103,8 @@ export default function HomePage({
   const notificationsAnchorRef = useRef(null);
   const notificationsButtonRef = useRef(null);
   const notificationsPanelRef = useRef(null);
+  const feedEndRef = useRef(null);
+  const [visiblePostCount, setVisiblePostCount] = useState(12);
 
   // User Profile
   const userName = currentUser?.name || 'Student';
@@ -220,7 +222,7 @@ export default function HomePage({
   }, [currentUser, showNotifications]);
 
   // Filter posts by search query and category
-  const filteredPosts = localPosts.filter(post => {
+  const filteredPosts = useMemo(() => localPosts.filter(post => {
     const matchesSubject = selectedSubject === 'All' ||
       (post.subject && post.subject.toLowerCase() === selectedSubject.toLowerCase());
 
@@ -232,7 +234,18 @@ export default function HomePage({
       (post.author && post.author.toLowerCase().includes(query));
 
     return matchesSubject && matchesSearch;
-  });
+  }), [localPosts, searchQuery, selectedSubject]);
+  const visiblePosts = filteredPosts.slice(0, visiblePostCount);
+
+  useEffect(() => {
+    const target = feedEndRef.current;
+    if (!target || visiblePostCount >= filteredPosts.length) return undefined;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) setVisiblePostCount(count => Math.min(count + 12, filteredPosts.length));
+    }, { root: postsScrollRef.current, rootMargin: '500px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [filteredPosts.length, visiblePostCount]);
 
   const subjects = ['All', 'DSA', 'OOP', 'Discrete Math', 'OS', 'Syllabi', 'General'];
 
@@ -403,7 +416,7 @@ export default function HomePage({
             ) : loadError && !localPosts.length ? null : filteredPosts.length > 0 ? (
               /* Display user posts in responsive cards grid */
               <div className="share-posts-grid">
-                {filteredPosts.map((item) => (
+                {visiblePosts.map((item) => (
                   <article key={item.id} className="share-post-card">
                     <div className="share-card-open" role="button" tabIndex={0} onClick={() => handlePostClick(item)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handlePostClick(item); } }}>
                     <div className="share-card-content">
@@ -433,6 +446,7 @@ export default function HomePage({
                     <PostActions key={`${item.id}:${currentUser?.id || 'guest'}`} post={item} currentUser={currentUser} onComment={() => handlePostClick(item)} isFavorite={favorites.some(saved => saved.id === item.id)} onToggleFavorite={onToggleFavorite} onSignIn={() => onNavigate?.('login')} />
                   </article>
                 ))}
+                {visiblePostCount < filteredPosts.length && <div ref={feedEndRef} className="share-feed-sentinel" aria-hidden="true" />}
               </div>
             ) : (
               /* Empty State (Exact requirement: users haven't posted yet) */

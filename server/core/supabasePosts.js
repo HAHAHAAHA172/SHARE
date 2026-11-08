@@ -2,39 +2,14 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createUpload, validateUploadedFile, removeUpload } from '../../src/security/server/uploads.js';
 import { text, httpError } from '../../src/security/server/validation.js';
 
 const subjects = new Set(['DSA', 'OOP', 'Discrete Math', 'OS', 'Syllabi', 'General']);
-const columns = 'id,user_id,title,content,subject,author,post_type,post_status,created_at,updated_at,likes(count),comments(count),materials(material_id,post_id,user_id,file_name,storage_path,mime_type,file_size_bytes)';
+export const POST_COLUMNS = 'id,user_id,title,content,subject,author,post_type,post_status,created_at,updated_at,likes(count),comments(count),materials(material_id,post_id,user_id,file_name,storage_path,mime_type,file_size_bytes)';
+const columns = POST_COLUMNS;
 const isUuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const validId = value => { if (!isUuid(value)) throw httpError(400, 'Invalid resource ID.'); return value; };
-const MAX_CONTEXT_TEXT = 120000;
-
-async function extractPdfText(buffer) {
-  // Render runs this extraction in a server-only Node process. Explicitly
-  // disable PDF.js workers so it does not try to spawn a browser worker.
-  const document = await getDocument({
-    data: new Uint8Array(buffer),
-    disableWorker: true,
-    isEvalSupported: false,
-    useSystemFonts: false,
-  }).promise;
-  const chunks = [];
-  let total = 0;
-  try {
-    for (let pageNumber = 1; pageNumber <= Math.min(document.numPages, 30) && total < MAX_CONTEXT_TEXT; pageNumber += 1) {
-      const page = await document.getPage(pageNumber);
-      const content = await page.getTextContent();
-      const text = content.items.map(item => typeof item.str === 'string' ? item.str : '').join(' ').replace(/\s+/g, ' ').trim();
-      if (text) { chunks.push(`Page ${pageNumber}: ${text}`); total += text.length; }
-      page.cleanup();
-    }
-  } finally { await document.destroy(); }
-  return chunks.join('\n').slice(0, MAX_CONTEXT_TEXT);
-}
-
 function check(result) {
   if (result.error) {
     if (result.error.code === '23503') throw httpError(409, 'Your account profile is not ready for posting. Please contact support.');
@@ -54,12 +29,13 @@ export function mapSupabasePost(row) {
       if (!row.author && typeof content.author === 'string') author = content.author.slice(0, 80);
     }
   } catch { /* Existing posts can contain ordinary text. */ }
-  const material = row.materials?.[0];
+  const materials = Array.isArray(row.materials) ? row.materials : [];
+  const files = materials.map((material, index) => ({ filename: material.material_id, originalname: material.file_name, mimetype: material.mime_type,
+    size: Number(material.file_size_bytes), url: index === 0 ? `/api/posts/${row.id}/file` : `/api/posts/${row.id}/file?material=${encodeURIComponent(material.material_id)}` }));
   return {
     id: row.id, ownerId: row.user_id, title: row.title, description, subject, author,
     createdAt: row.created_at, likes: Number.isFinite(row.likes) ? row.likes : (row.likes?.[0]?.count || 0), commentCount: Number.isFinite(row.commentCount) ? row.commentCount : (row.comments?.[0]?.count || 0), liked: Boolean(row.liked),
-    file: material ? { filename: material.material_id, originalname: material.file_name, mimetype: material.mime_type,
-      size: Number(material.file_size_bytes), url: `/api/posts/${row.id}/file` } : null,
+    file: files[0] || null, files,
   };
 }
 
@@ -92,7 +68,8 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     const id = validId(req.params.id);
     const client = clientFor(req);
     const row = check(await client.from('posts').select(columns).eq('id', id).eq('post_status', 'published').maybeSingle());
-    const material = row?.materials?.[0];
+    const requestedMaterial = typeof req.query.material === 'string' ? req.query.material : '';
+    const material = requestedMaterial ? row?.materials?.find(item => item.material_id === requestedMaterial) : row?.materials?.[0];
     if (!material || !material.storage_path.startsWith(`${row.user_id}/${id}/`)) throw httpError(404, 'Attachment not found.');
     const storage = client.storage.from(storageBucket);
     if (typeof storage.download !== 'function') {
@@ -109,34 +86,6 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     }).send(buffer);
   });
 
-  router.get('/:id/context', async (req, res) => {
-    if (!req.user) throw httpError(401, 'Sign in to access attachment context.');
-    const id = validId(req.params.id);
-    const client = clientFor(req);
-    const row = check(await client.from('posts').select('id,user_id,title,content,subject,author,post_status,materials(file_name,mime_type,file_size_bytes,storage_path)').eq('id', id).eq('post_status', 'published').maybeSingle());
-    if (!row) throw httpError(404, 'Resource not found.');
-    const material = row.materials?.[0];
-    let extractedText = '';
-    let extractionStatus = material ? 'unsupported' : null;
-    if (material?.storage_path.startsWith(`${row.user_id}/${id}/`) && material.file_size_bytes <= 10 * 1024 * 1024) {
-      const downloaded = check(await client.storage.from(storageBucket).download(material.storage_path));
-      const buffer = Buffer.from(await downloaded.arrayBuffer());
-      if (material.mime_type === 'text/plain') {
-        extractedText = buffer.toString('utf8').slice(0, MAX_CONTEXT_TEXT);
-        extractionStatus = extractedText ? 'complete' : 'empty';
-      } else if (material.mime_type === 'application/pdf') {
-        try {
-          extractedText = await extractPdfText(buffer);
-          extractionStatus = extractedText ? 'complete' : 'empty';
-        } catch { extractionStatus = 'pdf-extraction-failed'; }
-      }
-    }
-    res.set('Cache-Control', 'no-store').json({
-      post: { id: row.id, title: row.title, description: row.content || '', subject: row.subject || 'General', author: row.author || 'Student' },
-      attachment: material ? { filename: material.file_name, mimeType: material.mime_type, size: Number(material.file_size_bytes), extractedText, extractionStatus } : null,
-    });
-  });
-
   router.get('/:id', async (req, res) => {
     const id = validId(req.params.id);
     const row = check(await clientFor(req).from('posts').select(columns).eq('id', id).eq('post_status', 'published').maybeSingle());
@@ -144,14 +93,16 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     res.set('Cache-Control', 'no-store').json({ success: true, post: mapSupabasePost(row) });
   });
 
-  router.post('/', upload.single('file'), async (req, res, next) => {
-    let client, storagePath, postId, postSaved = false, materialSaved = false;
+  router.post('/', upload.fields([{ name: 'files', maxCount: 4 }, { name: 'file', maxCount: 1 }]), async (req, res, next) => {
+    const uploadedFiles = [...(req.files?.files || []), ...(req.files?.file || [])].slice(0, 4);
+    let client, postId, postSaved = false, materialSaved = false;
+    const storagePaths = [];
     try {
       const title = text(req.body.title, { name: 'Title', max: 200, required: true });
       const description = text(req.body.description, { name: 'Description', max: 8000 });
       const subject = text(req.body.subject, { name: 'Subject', max: 40, fallback: 'General' });
       if (!subjects.has(subject)) throw httpError(400, 'Choose a supported subject.');
-      await validateUploadedFile(req.file, { kind: 'resource' });
+      await Promise.all(uploadedFiles.map(file => validateUploadedFile(file, { kind: 'resource' })));
       client = clientFor(req);
       const profile = check(await client.from('user_profile').select('user_id').eq('user_id', req.user.id).maybeSingle());
       if (!profile) throw httpError(409, 'Your account profile is not ready for posting. Please contact support.');
@@ -167,27 +118,28 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
       postId = randomUUID();
       const row = { id: postId, user_id: req.user.id, title, content: description, subject, author,
         post_type: 'discussion', post_status: approvalRequired ? 'pending' : 'published', created_at: now, updated_at: now };
-      let material;
-      if (req.file) {
-        storagePath = `${req.user.id}/${postId}/${randomUUID()}${path.extname(req.file.filename)}`;
-        check(await client.storage.from(storageBucket).upload(storagePath, await readFile(req.file.path), { contentType: req.file.mimetype, upsert: false }));
-        material = { material_id: randomUUID(), post_id: postId, user_id: req.user.id,
-          file_name: text(req.file.originalname, { name: 'Filename', max: 180, required: true }),
-          storage_path: storagePath, mime_type: req.file.mimetype, file_size_bytes: req.file.size, created_at: now };
+      const materials = [];
+      for (const file of uploadedFiles) {
+        const storagePath = `${req.user.id}/${postId}/${randomUUID()}${path.extname(file.filename)}`;
+        check(await client.storage.from(storageBucket).upload(storagePath, await readFile(file.path), { contentType: file.mimetype, upsert: false }));
+        storagePaths.push(storagePath);
+        materials.push({ material_id: randomUUID(), post_id: postId, user_id: req.user.id,
+          file_name: text(file.originalname, { name: 'Filename', max: 180, required: true }),
+          storage_path: storagePath, mime_type: file.mimetype, file_size_bytes: file.size, created_at: now });
       }
       check(await client.from('posts').insert(row));
       postSaved = true;
-      if (material) { check(await client.from('materials').insert(material)); materialSaved = true; }
-      res.status(201).json({ success: true, post: mapSupabasePost({ ...row, materials: material ? [material] : [] }) });
+      if (materials.length) { check(await client.from('materials').insert(materials.length === 1 ? materials[0] : materials)); materialSaved = true; }
+      res.status(201).json({ success: true, post: mapSupabasePost({ ...row, materials }) });
     } catch (error) {
       // Compensate failed multi-service writes. Never silently fall back to Render disk.
       if (client && postId) {
         if (materialSaved) await client.from('materials').delete().eq('post_id', postId).eq('user_id', req.user.id).then(() => {}, () => {});
         if (postSaved) await client.from('posts').delete().eq('id', postId).eq('user_id', req.user.id).then(() => {}, () => {});
-        if (storagePath) await client.storage.from(storageBucket).remove([storagePath]).catch(() => {});
+        if (storagePaths.length) await client.storage.from(storageBucket).remove(storagePaths).catch(() => {});
       }
       next(error);
-    } finally { await removeUpload(req.file); }
+    } finally { await Promise.all(uploadedFiles.map(removeUpload)); }
   });
 
   router.delete('/:id', async (req, res) => {

@@ -19,7 +19,7 @@ export function createUpload(directory, { kind = 'ai' } = {}) {
       destination: directory,
       filename: (_req, file, done) => done(null, `${randomUUID()}${path.extname(file.originalname).toLowerCase()}`),
     }),
-    limits: { fileSize: kind === 'avatar' ? 5 * 1024 * 1024 : MAX_UPLOAD_BYTES, files: 1, fields: 8, fieldSize: 80 * 1024, parts: 10 },
+    limits: { fileSize: kind === 'avatar' ? 5 * 1024 * 1024 : MAX_UPLOAD_BYTES, files: kind === 'resource' ? 4 : 1, fields: 8, fieldSize: 80 * 1024, parts: kind === 'resource' ? 14 : 10 },
     fileFilter: (_req, file, done) => {
       const extension = path.extname(file.originalname).toLowerCase();
       const permitted = kind === 'avatar' ? ['.jpg', '.jpeg', '.png', '.webp'].includes(extension) : (kind !== 'ai' || !['.doc', '.pptx', '.mp4', '.webm'].includes(extension));

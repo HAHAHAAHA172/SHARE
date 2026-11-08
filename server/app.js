@@ -9,12 +9,14 @@ import { createSocialRouter } from './core/social.js';
 import { createProfileRouter } from './core/profile.js';
 import { createAdminRouter } from './core/admin.js';
 import { createNotificationsRouter } from './core/notifications.js';
+import { createSavedRouter } from './core/saved.js';
 import { createChatbotRouter } from './chatbot/routes.js';
 import { createConversationsRouter } from './chatbot/conversations.js';
 import { securityHeaders, restrictOrigins, requestLimiter, safeErrors } from '../src/security/server/http.js';
 import { createRequireAuth, limitConcurrentAI } from '../src/security/server/auth.js';
 import { createAuthRouter } from '../src/security/server/authRoutes.js';
 import { tmpdir } from 'node:os';
+import { createCache } from './shared/cache.js';
 
 const projectDir = fileURLToPath(new URL('../', import.meta.url));
 
@@ -26,6 +28,7 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
   mkdirSync(uploadsDir, { recursive: true });
   mkdirSync(tempDir, { recursive: true });
   const app = express();
+  const cache = createCache();
   app.disable('x-powered-by');
   app.set('trust proxy', trustProxy || false);
   // Compress dynamic JSON, HTML, CSS, and JavaScript responses. The middleware
@@ -42,11 +45,12 @@ export function createApp({ dataDir = path.join(projectDir, 'data'), uploadsDir 
   app.use('/api/auth', requestLimiter({ limit: rateLimits.auth ?? 10, windowMs: 15 * 60 * 1000 }), createAuthRouter({ createAuthClient, createDataClient, recoveryRedirectTo }));
   app.get('/api/me', requireAuth, (req, res) => res.set('Cache-Control', 'no-store').json({ user: { id: req.user.id } }));
   app.use('/api/conversations', requireAuth, requestLimiter({ limit: 60, perUser: true }), createConversationsRouter({ createDataClient }));
-  if (createDataClient) app.use('/api/profile', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createProfileRouter({ createDataClient, storageBucket: process.env.SUPABASE_AVATAR_BUCKET || 'avatars', uploadsDir }));
+  if (createDataClient) app.use('/api/profile', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createProfileRouter({ createDataClient, storageBucket: process.env.SUPABASE_AVATAR_BUCKET || 'avatars', uploadsDir, cache }));
   if (createDataClient) app.use('/api/admin', requireAuth, requestLimiter({ limit: rateLimits.writes ?? 20, windowMs: 60 * 60 * 1000, perUser: true }), createAdminRouter({ createDataClient, createAdminClient }));
   if (createDataClient) app.use('/api/notifications', requireAuth, requestLimiter({ limit: 120, windowMs: 60 * 60 * 1000, perUser: true }), createNotificationsRouter({ createDataClient }));
+  if (createDataClient) app.use('/api/saved', requireAuth, requestLimiter({ limit: 120, windowMs: 60 * 60 * 1000, perUser: true }), createSavedRouter({ createDataClient }));
   if (!createDataClient) app.get('/uploads/:filename', requestLimiter({ limit: rateLimits.downloads ?? 60 }), createResourceDownload({ dataDir, uploadsDir }));
-  app.get('/api/health', (_req, res) => res.json({ status: 'ok', name: 'S.H.A.R.E', aiConfigured: Boolean(ai) }));
+  app.get('/api/health', (_req, res) => res.json({ status: 'ok', name: 'S.H.A.R.E', aiConfigured: Boolean(ai), cache: cache.backend }));
   app.use('/api/posts', (req, res, next) => {
     if (['GET', 'HEAD'].includes(req.method)) return req.get('Authorization') ? requireAuth(req, res, next) : next();
     requireAuth(req, res, error => error ? next(error) : writeLimit(req, res, next));

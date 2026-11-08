@@ -89,6 +89,22 @@ export function createAdminRouter({ createDataClient, createAdminClient }) {
     } catch (error) { next(error); }
   });
 
+  router.delete('/users/:id/admin', async (req, res, next) => {
+    try {
+      if (!postIdPattern.test(req.params.id)) throw httpError(400, 'Invalid account ID.');
+      if (req.params.id === req.user.id) throw httpError(409, 'You cannot remove your own administrator access.');
+      const admin = createAdminClient?.();
+      if (!admin) throw httpError(503, 'Administrator account management is not configured.');
+      const countResult = await admin.from('user_profile').select('user_id', { count: 'exact', head: true }).eq('role', 'admin');
+      if (countResult.error) throw httpError(503, 'Administrator data is temporarily unavailable.');
+      if ((countResult.count || 0) <= 1) throw httpError(409, 'The last administrator cannot be removed.');
+      const result = await admin.from('user_profile').update({ role: 'student', updated_at: new Date().toISOString() }).eq('user_id', req.params.id).eq('role', 'admin').select('user_id,full_name,user_name,role').maybeSingle();
+      if (result.error) throw httpError(503, 'Administrator access could not be removed.');
+      if (!result.data) throw httpError(404, 'Administrator account not found.');
+      res.set('Cache-Control', 'no-store').json({ success: true, profile: result.data });
+    } catch (error) { next(error); }
+  });
+
   router.patch('/posts/:id', async (req, res, next) => {
     try {
       if (!postIdPattern.test(req.params.id)) throw httpError(400, 'Invalid post ID.');

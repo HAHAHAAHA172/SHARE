@@ -70,11 +70,11 @@
 }
 
 .pedro-chatbot .floating-chat-menu {
-  animation: fadeIn 0.15s ease-out forwards;
+  animation: fadeIn 200ms cubic-bezier(.22,1,.36,1) forwards;
 }
 
 .pedro-chatbot .menu-animate {
-  animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 200ms cubic-bezier(.22,1,.36,1) forwards;
 }
 
 /* Subtle shadow on the sidebar for depth */

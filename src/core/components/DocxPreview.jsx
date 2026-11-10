@@ -51,8 +51,8 @@ export default function DocxPreview({ src, filename = 'Document.docx', large = f
       useBase64URL: true,
     }).then(() => {
       if (!active || large) return;
-      const wrapper = container.querySelector('.docx-wrapper');
-      const page = wrapper?.querySelector('.docx');
+      const wrapper = container.querySelector('.share-docx-document-wrapper');
+      const page = wrapper?.querySelector('.share-docx-document');
       if (!wrapper || !page) return;
       const availableWidth = Math.max(container.clientWidth - 16, 1);
       const availableHeight = Math.max(container.clientHeight - 16, 1);

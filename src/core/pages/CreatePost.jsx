@@ -5,6 +5,15 @@ import { apiFetch } from '../../shared/api.js';
 import { ArrowLeft, User, FilePlus, Image as ImageIcon, Video, MoreHorizontal, X, FileText } from 'lucide-react';
 import { optimizeImageFile } from '../../shared/imageOptimization.js';
 
+const DOCUMENT_LIMIT_BYTES = 10 * 1024 * 1024;
+const VIDEO_LIMIT_BYTES = 50 * 1024 * 1024;
+
+function attachmentLimitError(files) {
+  if (files.some(file => file.type?.startsWith('video/') && file.size > VIDEO_LIMIT_BYTES)) return 'Videos must not exceed 50 MB.';
+  if (files.some(file => !file.type?.startsWith('video/') && file.size > DOCUMENT_LIMIT_BYTES)) return 'Documents and images must not exceed 10 MB.';
+  return '';
+}
+
 export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
   const [content, setContent] = useState('');
   const [subject, setSubject] = useState('DSA');
@@ -28,8 +37,9 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
     }
     setError('');
     setIsSubmitting(true);
-    if (attachments.some(attachment => attachment.size > 10 * 1024 * 1024)) {
-      setError('Each attachment must be smaller than 10 MB.');
+    const sizeError = attachmentLimitError(attachments);
+    if (sizeError) {
+      setError(sizeError);
       setIsSubmitting(false);
       return;
     }
@@ -180,8 +190,11 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   const selected = Array.from(e.target.files || []);
-                  setAttachments(items => [...items, ...selected].slice(0, 4));
                   e.target.value = '';
+                  const sizeError = attachmentLimitError(selected);
+                  if (sizeError) { setError(sizeError); return; }
+                  setError('');
+                  setAttachments(items => [...items, ...selected].slice(0, 4));
                 }}
               />
               <input
@@ -193,11 +206,15 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
                 onChange={async (e) => {
                   const selected = Array.from(e.target.files || []);
                   e.target.value = '';
+                  const sizeError = attachmentLimitError(selected);
+                  if (sizeError) { setError(sizeError); return; }
                   const optimized = await Promise.all(selected.map(file => file.type.startsWith('image/') ? optimizeImageFile(file) : file));
+                  setError('');
                   setAttachments(items => [...items, ...optimized].slice(0, 4));
                 }}
               />
             </div>
+            <p className="createpost-upload-limits">Documents and images: up to 10 MB each · Videos: up to 50 MB each</p>
           </div>
         </main>
 

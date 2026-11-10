@@ -7,6 +7,7 @@ import { once } from 'node:events';
 import { createApp } from '../server/app.js';
 import { readServerConfig } from '../src/security/server/config.js';
 import { checkPublicEnv } from '../src/security/build/checkPublicEnv.js';
+import { validateUploadedFile } from '../src/security/server/uploads.js';
 
 const alice = { Authorization: 'Bearer alice', 'Content-Type': 'application/json' };
 const bob = { Authorization: 'Bearer bob', 'Content-Type': 'application/json' };
@@ -101,6 +102,21 @@ test('uploads enforce MIME/extension/signature and size limits and clean rejecte
   const { post } = await accepted.json();
   assert.equal((await fetch(`${base}/api/posts/${post.id}`, { method: 'DELETE', headers: { Authorization: 'Bearer alice' } })).status, 200);
   assert.equal((await send('x'.repeat(10 * 1024 * 1024 + 1), 'text/plain', 'large.txt')).status, 413);
+  const video = Buffer.alloc(10 * 1024 * 1024 + 1);
+  Buffer.from('ftyp').copy(video, 4);
+  const acceptedVideo = await send(video, 'video/mp4', 'lecture.mp4');
+  assert.equal(acceptedVideo.status, 201);
+  const { post: videoPost } = await acceptedVideo.json();
+  assert.equal((await fetch(`${base}/api/posts/${videoPost.id}`, { method: 'DELETE', headers: { Authorization: 'Bearer alice' } })).status, 200);
+  await assert.rejects(
+    validateUploadedFile({
+      size: 50 * 1024 * 1024 + 1,
+      mimetype: 'video/mp4',
+      originalname: 'too-large.mp4',
+      path: path.join(config.uploadsDir, 'missing-large-video.mp4'),
+    }, { kind: 'resource' }),
+    error => error?.status === 413 && error?.message === 'Videos must not exceed 50 MB.',
+  );
   assert.deepEqual(await readdir(config.uploadsDir), []);
 });
 

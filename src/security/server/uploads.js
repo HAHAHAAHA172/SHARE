@@ -12,6 +12,7 @@ const types = {
   '.png': ['image/png'], '.webp': ['image/webp'], '.avif': ['image/avif'], '.mp4': ['video/mp4'], '.webm': ['video/webm'],
 };
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_VIDEO_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 export function createUpload(directory, { kind = 'ai' } = {}) {
   return multer({
@@ -19,7 +20,9 @@ export function createUpload(directory, { kind = 'ai' } = {}) {
       destination: directory,
       filename: (_req, file, done) => done(null, `${randomUUID()}${path.extname(file.originalname).toLowerCase()}`),
     }),
-    limits: { fileSize: kind === 'avatar' ? 5 * 1024 * 1024 : MAX_UPLOAD_BYTES, files: kind === 'resource' ? 4 : 1, fields: 8, fieldSize: 80 * 1024, parts: kind === 'resource' ? 14 : 10 },
+    // Resource uploads need a 50 MB transport ceiling so videos can pass.
+    // validateUploadedFile applies the stricter 10 MB limit to every other type.
+    limits: { fileSize: kind === 'avatar' ? 5 * 1024 * 1024 : kind === 'resource' ? MAX_VIDEO_UPLOAD_BYTES : MAX_UPLOAD_BYTES, files: kind === 'resource' ? 4 : 1, fields: 8, fieldSize: 80 * 1024, parts: kind === 'resource' ? 14 : 10 },
     fileFilter: (_req, file, done) => {
       const extension = path.extname(file.originalname).toLowerCase();
       const permitted = kind === 'avatar' ? ['.jpg', '.jpeg', '.png', '.webp', '.avif'].includes(extension) : (kind !== 'ai' || !['.doc', '.mp4', '.webm'].includes(extension));
@@ -36,6 +39,12 @@ export async function removeUpload(file) {
 export async function validateUploadedFile(file, { kind = 'ai' } = {}) {
   if (!file) return;
   const extension = path.extname(file.originalname).toLowerCase();
+  const isVideo = ['video/mp4', 'video/webm'].includes(file.mimetype);
+  const maximumBytes = kind === 'resource' && isVideo ? MAX_VIDEO_UPLOAD_BYTES : MAX_UPLOAD_BYTES;
+  if (file.size > maximumBytes) {
+    await removeUpload(file);
+    throw httpError(413, isVideo ? 'Videos must not exceed 50 MB.' : 'Documents and images must not exceed 10 MB.');
+  }
   const handle = await open(file.path, 'r');
   let head;
   try {

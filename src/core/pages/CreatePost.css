@@ -303,6 +303,13 @@
   cursor: not-allowed;
 }
 
+.createpost-upload-limits {
+  margin: 8px 0 0;
+  color: #bdb4ca;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* ================= RESPONSIVE ADJUSTMENTS ================= */
 
 /* Small Phones (< 400px width) */

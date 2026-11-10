@@ -92,6 +92,12 @@ export function createSupabasePostsRouter({ createDataClient, uploadsDir, storag
     const material = requestedMaterial ? row?.materials?.find(item => item.material_id === requestedMaterial) : row?.materials?.[0];
     if (!material || !material.storage_path.startsWith(`${row.user_id}/${id}/`)) throw httpError(404, 'Attachment not found.');
     const storage = client.storage.from(storageBucket);
+    if (req.query.media === '1') {
+      if (!String(material.mime_type || '').startsWith('video/')) throw httpError(400, 'This attachment is not a video.');
+      const signed = check(await storage.createSignedUrl(material.storage_path, 300));
+      if (!signed?.signedUrl) throw httpError(503, 'The video could not be opened. Please try again.');
+      return res.set('Cache-Control', 'private, no-store').json({ url: signed.signedUrl });
+    }
     if (typeof storage.download !== 'function') {
       const signed = check(await storage.createSignedUrl(material.storage_path, 60, { download: material.file_name }));
       return res.set('Cache-Control', 'no-store').redirect(302, signed.signedUrl);

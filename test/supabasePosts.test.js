@@ -169,10 +169,17 @@ test('Supabase feed filters and escaped search run before pagination, with stric
 test('Supabase downloads issue fresh short-lived attachment links and missing resources return 404', async t => {
   const { base, state } = await fixture(t);
   const { post } = await (await publish(base)).json();
+  assert.equal((await fetch(`${base}${post.file.url}?media=1`)).status, 400);
   const response = await fetch(`${base}${post.file.url}`, { redirect: 'manual' });
   assert.equal(response.status, 302); assert.equal(response.headers.get('cache-control'), 'no-store');
   const signing = state.calls.find(call => call.signed);
   assert.equal(signing.expires, 60); assert.equal(signing.options.download, 'notes.txt');
+  state.materials[0].mime_type = 'video/mp4';
+  const media = await fetch(`${base}${post.file.url}?media=1`);
+  assert.equal(media.status, 200);
+  assert.deepEqual(await media.json(), { url: 'https://example.supabase.co/storage/v1/object/sign/post-files/file?token=test' });
+  const mediaSigning = state.calls.filter(call => call.signed).at(-1);
+  assert.equal(mediaSigning.expires, 300); assert.equal(mediaSigning.options, undefined);
   assert.equal((await fetch(`${base}/api/posts/33333333-3333-4333-8333-333333333333`)).status, 404);
 });
 

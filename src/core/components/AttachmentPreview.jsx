@@ -8,6 +8,7 @@ const DocxPreview = lazy(() => import('./DocxPreview.jsx'));
 const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const mediaUrlCache = new Map();
+const videoUrlCache = new Map();
 const MEDIA_URL_CACHE_LIMIT = 48;
 
 const isPptxFile = file => file?.mimetype === PPTX_MIME || file?.originalname?.toLowerCase().endsWith('.pptx');
@@ -70,10 +71,32 @@ export function InlineImage({ src, alt, onError }) {
 
 function InlineVideo({ src, controls = false, autoPlay = false }) {
   const [failed, setFailed] = useState(false);
-  const resolved = useAuthenticatedMedia(src, () => setFailed(true));
+  const [resolved, setResolved] = useState('');
+  useEffect(() => {
+    let active = true;
+    const cached = videoUrlCache.get(src);
+    if (cached?.expiresAt > Date.now()) {
+      Promise.resolve(cached.url).then(url => { if (active) setResolved(url); });
+      return () => { active = false; };
+    }
+    const separator = src.includes('?') ? '&' : '?';
+    apiFetch(`${src}${separator}media=1`, { timeoutMs: 20_000 })
+      .then(response => {
+        if (!response.ok) throw new Error('Video preview unavailable');
+        return response.json();
+      })
+      .then(({ url }) => {
+        if (!url) throw new Error('Video preview unavailable');
+        videoUrlCache.set(src, { url, expiresAt: Date.now() + 240_000 });
+        while (videoUrlCache.size > 16) videoUrlCache.delete(videoUrlCache.keys().next().value);
+        if (active) setResolved(url);
+      })
+      .catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [src]);
   if (failed) return <DocumentFallback label="Video preview unavailable" />;
   if (!resolved) return <span className="share-media-loading">Loading video preview…</span>;
-  return <video className="share-feed-media" src={resolved} controls={controls} autoPlay={autoPlay} muted={!controls} playsInline preload="metadata">Your browser cannot play this video.</video>;
+  return <video className="share-feed-media" src={resolved} controls={controls} autoPlay={autoPlay} muted={autoPlay || !controls} playsInline preload="metadata">Your browser cannot play this video.</video>;
 }
 
 function DocumentFallback({ file, label = 'Open attachment' }) {

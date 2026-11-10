@@ -5,16 +5,18 @@ import { httpError } from './validation.js';
 
 export function securityHeaders({ production = false, supabaseUrl } = {}) {
   const connectSrc = ["'self'", 'blob:'];
+  const mediaSrc = ["'self'", 'blob:'];
   if (supabaseUrl) {
     const origin = new URL(supabaseUrl).origin;
     connectSrc.push(origin, origin.replace(/^https:/, 'wss:'));
+    mediaSrc.push(origin);
   }
   return helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"], scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
         styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:', 'blob:'],
-        connectSrc, fontSrc: ["'self'", 'data:'], objectSrc: ["'none'"],
+        connectSrc, mediaSrc, fontSrc: ["'self'", 'data:'], objectSrc: ["'none'"],
         baseUri: ["'none'"], frameAncestors: ["'none'"], formAction: ["'self'"],
         upgradeInsecureRequests: production ? [] : null,
       },

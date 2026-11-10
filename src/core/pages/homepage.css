@@ -1168,6 +1168,10 @@
 .share-docx-preview.is-card .docx + .docx { display: none; }
 .share-docx-preview.is-large { height: 100%; padding-bottom: 64px; }
 .share-docx-preview.is-large .share-docx-render { padding: 18px 24px 80px; scrollbar-gutter: stable; }
+.share-docx-toolbar { position: absolute; top: 58px; right: 28px; left: 28px; z-index: 3; display: flex; align-items: center; justify-content: flex-start; pointer-events: none; }
+.share-docx-pagination { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 999px; color: #fff; background: rgb(33 26 49 / 88%); box-shadow: 0 4px 12px rgb(0 0 0 / 24%); pointer-events: auto; }
+.share-docx-pagination button { border: 0; border-radius: 999px; padding: 6px 10px; color: #211a31; background: #e9ddff; cursor: pointer; }
+.share-docx-pagination button:disabled { opacity: .5; cursor: default; }
 .share-docx-download { position: absolute; right: 16px; bottom: 12px; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 0; border-radius: 10px; color: #211a31; background: #e9ddff; box-shadow: 0 4px 12px rgb(0 0 0 / 24%); cursor: pointer; transition: opacity 240ms cubic-bezier(.22,1,.36,1), transform 240ms cubic-bezier(.22,1,.36,1); }
 .share-docx-download:hover { transform: translateY(-1px); }
 .share-docx-download:active { transform: scale(.98); }

@@ -50,7 +50,7 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
     formData.append('subject', subject);
     attachments.forEach(attachment => formData.append('files', attachment));
     try {
-      const response = await apiFetch('/api/posts', { method: 'POST', body: formData });
+      const response = await apiFetch('/api/posts', { method: 'POST', body: formData, timeoutMs: 120_000 });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Could not publish this post. Please try again.');
       const savedPost = result.post || result;
@@ -139,7 +139,19 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
               {attachments.map((attachment, index) => <div className="createpost-file-badge" key={`${attachment.name}:${attachment.lastModified}:${index}`}>
                 <FileText size={16} color="#9A89C6" />
                 <span className="createpost-file-badge-name">{attachment.name}</span>
-                <button type="button" className="createpost-file-badge-remove" aria-label={`Remove ${attachment.name}`} onClick={() => setAttachments(items => items.filter((_, itemIndex) => itemIndex !== index))}><X size={14} /></button>
+                <button
+                  type="button"
+                  className="createpost-file-badge-remove"
+                  aria-label={`Remove ${attachment.name}`}
+                  title={`Remove ${attachment.name}`}
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    setAttachments(items => items.filter((_, itemIndex) => itemIndex !== index));
+                    setError('');
+                  }}
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
               </div>)}
             </div>}
 
@@ -149,6 +161,7 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
                 type="button"
                 className="createpost-action-btn"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting}
                 title="Attach Document / PDF"
               >
                 <FilePlus size={22} color="#E0E0E6" strokeWidth={1.8} />
@@ -158,6 +171,7 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
                 type="button"
                 className="createpost-action-btn"
                 onClick={() => mediaInputRef.current?.click()}
+                disabled={isSubmitting}
                 title="Attach Picture / Photo"
               >
                 <ImageIcon size={22} color="#E0E0E6" strokeWidth={1.8} />
@@ -167,6 +181,7 @@ export default function CreatePost({ currentUser, onNavigate, onPostCreated }) {
                 type="button"
                 className="createpost-action-btn"
                 onClick={() => mediaInputRef.current?.click()}
+                disabled={isSubmitting}
                 title="Attach Video"
               >
                 <Video size={22} color="#E0E0E6" strokeWidth={1.8} />

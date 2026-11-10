@@ -55,7 +55,12 @@ export function dataClientFactory({ supabaseUrl, publishableKey }) {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     global: {
       ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
-      fetch: (url, options = {}) => fetch(url, { ...options, signal: AbortSignal.timeout(20_000) }),
+      fetch: (url, options = {}) => {
+        const isStorageRequest = /\/storage\/v1\/object(?:\/|$)/.test(String(url));
+        const timeoutSignal = AbortSignal.timeout(isStorageRequest ? 120_000 : 20_000);
+        const signal = options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal;
+        return fetch(url, { ...options, signal });
+      },
     },
   });
 }

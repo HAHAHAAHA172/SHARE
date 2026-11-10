@@ -47,6 +47,7 @@ export default function DocxPreview({ src, filename = 'Document.docx', large = f
       ignoreHeight: !large,
       renderHeaders: true,
       renderFooters: true,
+      ignoreLastRenderedPageBreak: false,
       useBase64URL: true,
     }).catch(() => {
       if (active) setResult(current => ({ ...current, error: 'Word preview unavailable' }));

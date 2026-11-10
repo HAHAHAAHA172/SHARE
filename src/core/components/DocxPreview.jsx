@@ -43,12 +43,24 @@ export default function DocxPreview({ src, filename = 'Document.docx', large = f
       className: 'share-docx-document',
       inWrapper: true,
       breakPages: true,
-      ignoreWidth: !large,
-      ignoreHeight: !large,
+      ignoreWidth: false,
+      ignoreHeight: false,
       renderHeaders: true,
       renderFooters: true,
       ignoreLastRenderedPageBreak: false,
       useBase64URL: true,
+    }).then(() => {
+      if (!active || large) return;
+      const wrapper = container.querySelector('.docx-wrapper');
+      const page = wrapper?.querySelector('.docx');
+      if (!wrapper || !page) return;
+      const availableWidth = Math.max(container.clientWidth - 16, 1);
+      const availableHeight = Math.max(container.clientHeight - 16, 1);
+      const scale = Math.min(availableWidth / page.offsetWidth, availableHeight / page.offsetHeight);
+      if (!Number.isFinite(scale) || scale <= 0) return;
+      wrapper.style.width = `${100 / scale}%`;
+      wrapper.style.transform = `scale(${scale})`;
+      wrapper.style.transformOrigin = 'top center';
     }).catch(() => {
       if (active) setResult(current => ({ ...current, error: 'Word preview unavailable' }));
     });
